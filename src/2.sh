@@ -11,7 +11,7 @@ QUANT_DIR_STEP1=$2
 LIB_DIR=$3
 FUll_LIB_FILE=$4
 
-FILES_STRING=$(find "$DATA_DIR" -name '*.d' -type d -printf '--f "%p" ')
+FILES_STRING=$(find "$DATA_DIR" -maxdepth 1 \( -name '*.d' -o -name '*.raw' \) -printf '--f "%p" ')
 LIB_OUT="$LIB_DIR/project_lib.parquet"
 
 module load apptainer

@@ -15,7 +15,7 @@ RAW_FILES=("$DATA_DIR"/*.d "$DATA_DIR"/*.raw)
 RAW_PATH="${RAW_FILES[$SLURM_ARRAY_TASK_ID]}"
 
 module load apptainer
-apptainer exec -B /scratch:/scratch "$CONTAINER_SIF" /diann-2.2.0/diann-linux \
+apptainer exec -B /scratch:/scratch "$CONTAINER_SIF" "$DIANN_BIN_PATH" \
  --f "$RAW_PATH" \
  --lib "$FUll_LIB_FILE" \
  --fasta "$FASTA_FILE" \

@@ -15,7 +15,7 @@ REPORT_OUT="$REPORT_DIR/final_report"
 FILES_STRING=$(find "$DATA_DIR" -maxdepth 1 \( -name '*.d' -o -name '*.raw' \) -printf '--f "%p" ')
 
 module load apptainer
-apptainer exec -B /scratch:/scratch "$CONTAINER_SIF" /diann-2.2.0/diann-linux \
+apptainer exec -B /scratch:/scratch "$CONTAINER_SIF" "$DIANN_BIN_PATH" \
  $FILES_STRING \
  --lib "$NEW_LIB_FILE" \
  --temp "$QUANT_DIR_STEP3" \

@@ -29,9 +29,9 @@ NEW_LIB_FILE="$LIB_DIR/project_lib.parquet"
 
 mkdir -p $LOG_DIR $QUANT_DIR_1 $QUANT_DIR_3 $LIB_DIR $REPORT_DIR
 
-FILE_COUNT=$(find "$DATA_DIR" -maxdepth 1 -name '*.d' | wc -l)
+FILE_COUNT=$(find "$DATA_DIR" -maxdepth 1 \( -name '*.d' -o -name '*.raw' \) | wc -l)
 if [ $FILE_COUNT -eq 0 ]; then
-    echo "Error: No .d files found in $DATA_DIR"
+    echo "Error: No .d or .raw files found in $DATA_DIR"
     exit 1
 fi
 ARRAY_MAX=$((FILE_COUNT - 1))

@@ -1,6 +1,6 @@
-# DIA-NN Parallel Workflow on Puhti
+# DIA-NN Parallel Workflow on HPC
 
-Runs DIA-NN over many samples in parallel on [puhti.csc.fi](https://www.puhti.csc.fi/public/).
+Runs DIA-NN over many samples in parallel on HPC.
 You organise your data, make a config file, and submit one command — the rest is automatic.
 
 Based on Brett S. Phinney's video [Running DIA-NN on an HPC cluster](https://youtu.be/75Gk6uQclc8?si=zZqzikGoCqnogNtn).
@@ -30,30 +30,24 @@ files are split into batches automatically, because that is Puhti's queue limit 
 ### 1. Put your files on Puhti
 
 The workflow lives in `/scratch/project_2000752/DIA-NN`. Make a folder for your experiment
-under `04_projects/<your_username>/`, with a folder inside it for the raw files:
+under `04_projects/<your_name>/<your_project>`, with a folder inside it for the raw files:
 
 ```bash
-cd /scratch/project_2000752/DIA-NN/04_projects/userx
-mkdir -p mouse_brain/raw_data
+cd /scratch/project_2000752/DIA-NN/04_projects/<your_name>
+mkdir -p <your_project>/raw_data
 ```
 
-- **Raw data** (`.d` / `.raw`) → `mouse_brain/raw_data/`
+- **Raw data** (`.d` / `.raw`) → `<your_project>/raw_data/`
 - **FASTA** → your experiment folder, or `03_resources/fasta/` to share it
 - **Spectral library** → check `03_resources/lib/` first; upload yours there if none fits
 
-The Puhti web upload caps at 10 GB. For anything bigger, use [Allas](https://allas.csc.fi):
-
-```bash
-module load allas
-allas-conf
-a-get your_object_name
-```
+**For any files with big size and big amount, recomend using FileZilla or Winscp.**
 
 ### 2. Make the config file
 
 **Use the [Config Builder](https://dddcr.github.io/DIANN_on_Puhti/webgui/)** — fill in the
-form, paste the line it gives you into a Puhti terminal. It checks your paths, counts your
-raw files, and writes the config into `mouse_brain/configs/`.
+form, paste the line it gives you into terminal. It checks your paths, counts your
+raw files, and writes the config into `<your_project>/configs/`.
 
 Or copy `example_config.sh` and edit it by hand:
 
@@ -71,7 +65,7 @@ Or copy `example_config.sh` and edit it by hand:
 
 ```bash
 DATA_DIRS=(
-    "/scratch/project_2000752/DIA-NN/04_projects/userx/mouse_brain/raw_data"
+    "/scratch/project_2000752/DIA-NN/04_projects/<your_name>/<your_project>/raw_data"
 )
 ```
 
@@ -82,7 +76,7 @@ CPUs, memory and time are pre-set in the master scripts, so they are not your co
 One line, from anywhere on Puhti. Only the config path changes between runs:
 
 ```bash
-/scratch/project_2000752/DIA-NN/02_scripts/diann_runner.sh /scratch/project_2000752/DIA-NN/04_projects/userx/mouse_brain/configs/mouse_brain_config.sh
+/scratch/project_2000752/DIA-NN/02_scripts/diann_runner.sh /scratch/project_2000752/DIA-NN/04_projects/<your_name>/<your_project>/configs/config.sh
 ```
 
 Job ID numbers mean it worked.
@@ -96,7 +90,7 @@ Job ID numbers mean it worked.
 - **Errors:** every job writes a log to `<output>/logs/` saying exactly what failed.
 
 ```
-mouse_brain/                 <- experiment folder
+<your_project>/              <- experiment folder
 ├── raw_data/                <- your .d or .raw files
 ├── configs/                 <- config files
 └── mouse_brain_output/
@@ -118,8 +112,6 @@ Builder removes them for you and explains why.
 
 One that is easy to get wrong: `--cut K*,R*,!*P` is plain Trypsin (not before proline).
 `--cut K*,R*` is Trypsin/P, which cuts before proline too.
-
-**If confused and want to add more customized parameters, AI(ChatGPT, Gemini) is very helpful, but remember double check the parameter is really exist on DIAN-NN Github page**
 
 -----
 

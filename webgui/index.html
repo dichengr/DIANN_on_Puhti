@@ -1,0 +1,2173 @@
+<meta charset="utf-8">
+<title>DIA-NN Config Builder</title>
+
+<style>
+/* ---------- tokens: light is the complete palette ---------- */
+:root {
+  --ground:      #EDF1F2;
+  --surface:     #FFFFFF;
+  --surface-2:   #F4F8F8;
+  --ink:         #10222A;
+  --ink-2:       #4A626C;
+  --ink-3:       #748B94;
+  --line:        #D2DEE0;
+  --line-2:      #E4EDEE;
+  --accent:      #0C6E70;
+  --accent-soft: #DCEDED;
+  --ok:          #2C6E49;
+  --ok-soft:     #DFEDE4;
+  --warn:        #8A5300;
+  --warn-soft:   #F6E9D6;
+  --bad:         #AC3A1C;
+  --bad-soft:    #F6E1DA;
+  --focus:       #0C6E70;
+
+  /* console surface is deliberately fixed in both themes: dark == "this goes in the terminal" */
+  --con-bg:      #0C1A20;
+  --con-bar:     #162A32;
+  --con-ink:     #D8E6E8;
+  --con-dim:     #7E9AA1;
+  --con-key:     #64C9C4;
+  --con-str:     #E0B26B;
+  --con-cmt:     #5F7C85;
+  --con-line:    #223840;
+
+  --radius:   3px;
+  --radius-2: 6px;
+  --shadow:   0 1px 2px rgba(16,34,42,.06), 0 6px 18px rgba(16,34,42,.05);
+
+  --serif: "Palatino Linotype", Palatino, "Iowan Old Style", "Book Antiqua", Georgia, ui-serif, serif;
+  --sans:  system-ui, "Segoe UI Variable Text", "Segoe UI", -apple-system, Roboto, sans-serif;
+  --mono:  "Cascadia Mono", "Cascadia Code", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #091317;
+    --surface:     #0F1F25;
+    --surface-2:   #152830;
+    --ink:         #E2ECEE;
+    --ink-2:       #9AB0B7;
+    --ink-3:       #6E888F;
+    --line:        #23383F;
+    --line-2:      #1A2E35;
+    --accent:      #52BFBD;
+    --accent-soft: #14343A;
+    --ok:          #74C293;
+    --ok-soft:     #14301F;
+    --warn:        #D9A23B;
+    --warn-soft:   #33260E;
+    --bad:         #E88060;
+    --bad-soft:    #37190F;
+    --focus:       #52BFBD;
+    --shadow:      0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:      #091317;
+  --surface:     #0F1F25;
+  --surface-2:   #152830;
+  --ink:         #E2ECEE;
+  --ink-2:       #9AB0B7;
+  --ink-3:       #6E888F;
+  --line:        #23383F;
+  --line-2:      #1A2E35;
+  --accent:      #52BFBD;
+  --accent-soft: #14343A;
+  --ok:          #74C293;
+  --ok-soft:     #14301F;
+  --warn:        #D9A23B;
+  --warn-soft:   #33260E;
+  --bad:         #E88060;
+  --bad-soft:    #37190F;
+  --focus:       #52BFBD;
+  --shadow:      0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- shell ---------- */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 96px; }
+
+header.masthead {
+  padding: 44px 0 28px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 34px;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 12px;
+}
+h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(2rem, 4.4vw, 2.85rem);
+  line-height: 1.12;
+  letter-spacing: -.012em;
+  margin: 0 0 14px;
+  text-wrap: balance;
+}
+.standfirst {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--ink-2);
+  font-size: 1.06rem;
+}
+.standfirst strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- pipeline overview ---------- */
+.overview {
+  margin-top: 30px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2);
+  padding: 18px 20px 14px;
+  overflow-x: auto;
+}
+.overview svg { display: block; min-width: 640px; width: 100%; height: auto; }
+.ov-track { stroke: var(--line); stroke-width: 2; }
+.ov-box   { fill: var(--surface-2); stroke: var(--line); stroke-width: 1; }
+.ov-num   { font-family: var(--mono); font-size: 10px; fill: var(--accent); letter-spacing: .08em; }
+.ov-name  { font-family: var(--sans); font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+.ov-sub   { font-family: var(--sans); font-size: 11px; fill: var(--ink-3); }
+.ov-cap   { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-3); }
+.ov-pulse { fill: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .ov-pulse { animation: ovflow 7s linear infinite; }
+}
+@keyframes ovflow {
+  0%   { transform: translateX(0);   opacity: 0; }
+  6%   { opacity: 1; }
+  94%  { opacity: 1; }
+  100% { transform: translateX(560px); opacity: 0; }
+}
+
+/* ---------- layout ---------- */
+.layout { display: grid; grid-template-columns: 208px minmax(0, 1fr); gap: 40px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; gap: 24px; } }
+
+nav.rail { position: sticky; top: 24px; }
+@media (max-width: 860px) {
+  nav.rail { position: static; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+}
+.rail-item {
+  display: flex; gap: 11px; align-items: baseline;
+  padding: 9px 10px;
+  border-left: 2px solid var(--line);
+  color: var(--ink-3);
+  text-decoration: none;
+  font-size: .9rem;
+  transition: color .15s, border-color .15s;
+}
+@media (max-width: 860px) {
+  .rail-item { border-left: none; border-bottom: 2px solid var(--line); white-space: nowrap; flex: 0 0 auto; }
+}
+.rail-item:hover { color: var(--ink); }
+.rail-item.on { color: var(--ink); border-color: var(--accent); font-weight: 600; }
+.rail-num { font-family: var(--mono); font-size: .74rem; color: var(--accent); }
+.rail-note {
+  margin-top: 18px; padding: 12px 12px 12px 14px;
+  border-left: 2px solid var(--line-2);
+  font-size: .8rem; color: var(--ink-3); line-height: 1.5;
+}
+@media (max-width: 860px) { .rail-note { display: none; } }
+
+/* ---------- step cards ---------- */
+.step {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2);
+  padding: 26px 28px 28px;
+  margin-bottom: 26px;
+  box-shadow: var(--shadow);
+  scroll-margin-top: 20px;
+}
+@media (max-width: 560px) { .step { padding: 20px 17px 22px; } }
+.step-head { display: flex; gap: 13px; align-items: baseline; margin-bottom: 6px; }
+.step-num {
+  font-family: var(--mono); font-size: .76rem; letter-spacing: .1em;
+  color: var(--accent); padding-top: 2px;
+}
+h2 {
+  font-family: var(--serif); font-weight: 400; font-size: 1.5rem;
+  margin: 0; letter-spacing: -.008em; text-wrap: balance;
+}
+.step-intro { color: var(--ink-2); margin: 0 0 22px; max-width: 64ch; font-size: .96rem; }
+.step-intro code, .inline-code {
+  font-family: var(--mono); font-size: .86em;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: var(--radius); padding: .08em .34em;
+}
+
+h3 {
+  font-family: var(--sans); font-size: .76rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3); margin: 26px 0 12px;
+}
+h3:first-of-type { margin-top: 0; }
+
+/* ---------- fields ---------- */
+.field { margin-bottom: 17px; }
+.field > label, .flabel {
+  display: block; font-size: .87rem; font-weight: 600;
+  margin-bottom: 5px; color: var(--ink);
+}
+.hint { font-size: .81rem; color: var(--ink-3); margin: 0 0 7px; line-height: 1.45; }
+input[type="text"], textarea {
+  width: 100%; font-family: var(--mono); font-size: .86rem;
+  color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 9px 11px; line-height: 1.5;
+}
+input[type="text"]::placeholder, textarea::placeholder { color: var(--ink-3); opacity: .75; }
+input[type="text"]:focus-visible, textarea:focus-visible,
+button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+textarea { resize: vertical; min-height: 128px; }
+input.bad  { border-color: var(--bad); }
+input.warn { border-color: var(--warn); }
+
+.msg { font-size: .82rem; margin-top: 5px; display: flex; gap: 7px; align-items: flex-start; line-height: 1.45; }
+.msg.err  { color: var(--bad); }
+.msg.warn { color: var(--warn); }
+.msg.ok   { color: var(--ok); }
+.msg-mark { font-family: var(--mono); font-weight: 700; flex: 0 0 auto; }
+
+.dir-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+.dir-row input { flex: 1; }
+
+/* ---------- buttons ---------- */
+button {
+  font-family: var(--sans); font-size: .85rem; font-weight: 600;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 8px 13px; cursor: pointer;
+  transition: background .13s, border-color .13s, color .13s;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.primary,
+button.primary { color: #FFFFFF; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) button.primary { color: #06181A; }
+}
+:root[data-theme="dark"] button.primary { color: #06181A; }
+button.primary:hover { filter: brightness(1.08); color: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) button.primary:hover { color: #06181A; }
+}
+:root[data-theme="dark"] button.primary:hover { color: #06181A; }
+button.ghost { background: transparent; }
+button.icon { padding: 8px 10px; font-family: var(--mono); }
+.btn-row { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 14px; }
+
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 13px; }
+.preset {
+  font-size: .81rem; font-weight: 500; padding: 6px 11px;
+  background: var(--surface-2); border-radius: 100px;
+}
+
+/* ---------- console blocks ---------- */
+.console {
+  background: var(--con-bg); border-radius: var(--radius-2);
+  overflow: hidden; margin: 12px 0 4px;
+  border: 1px solid var(--con-line);
+}
+.console-bar {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--con-bar); padding: 7px 12px;
+  border-bottom: 1px solid var(--con-line);
+}
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--con-cmt); flex: 0 0 auto; opacity: .6; }
+.console-title {
+  font-family: var(--mono); font-size: .74rem; color: var(--con-dim);
+  letter-spacing: .05em; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.console-bar button {
+  background: transparent; border-color: var(--con-line); color: var(--con-dim);
+  font-size: .73rem; padding: 4px 9px; font-family: var(--mono);
+}
+.console-bar button:hover { color: var(--con-key); border-color: var(--con-key); }
+.console pre {
+  margin: 0; padding: 14px 16px; overflow-x: auto;
+  font-family: var(--mono); font-size: .8rem; line-height: 1.65;
+  color: var(--con-ink); white-space: pre; tab-size: 4;
+}
+.console pre .c { color: var(--con-cmt); }
+.console pre .k { color: var(--con-key); }
+.console pre .s { color: var(--con-str); }
+.console pre .d { color: var(--con-dim); }
+
+/* ---------- parameter verdict panels ---------- */
+.verdict { display: grid; gap: 13px; margin-top: 18px; }
+.panel { border: 1px solid var(--line); border-radius: var(--radius-2); overflow: hidden; }
+.panel-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 13px; font-size: .78rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+.panel-head .count { font-family: var(--mono); font-weight: 600; letter-spacing: 0; opacity: .8; }
+.panel.keep .panel-head { background: var(--ok-soft); color: var(--ok); }
+.panel.drop .panel-head { background: var(--bad-soft); color: var(--bad); }
+.panel.warn .panel-head { background: var(--warn-soft); color: var(--warn); }
+.panel-body { padding: 4px 13px 11px; background: var(--surface); }
+.panel-body p.empty { color: var(--ink-3); font-size: .85rem; margin: 8px 0; }
+
+.flag-list { list-style: none; margin: 0; padding: 0; }
+.flag-list li {
+  display: flex; gap: 12px; align-items: baseline;
+  padding: 7px 0; border-bottom: 1px solid var(--line-2);
+  font-size: .84rem; flex-wrap: wrap;
+}
+.flag-list li:last-child { border-bottom: none; }
+.flag-name {
+  font-family: var(--mono); font-size: .82rem; color: var(--ink);
+  flex: 0 0 auto; font-weight: 600;
+}
+.flag-val { font-family: var(--mono); font-size: .82rem; color: var(--ink-2); word-break: break-all; }
+.flag-why { color: var(--ink-3); font-size: .81rem; flex: 1 1 200px; min-width: 0; }
+
+/* ---------- illustrations ---------- */
+figure { margin: 0 0 22px; }
+figcaption {
+  font-size: .8rem; color: var(--ink-3); margin-top: 9px;
+  padding-left: 2px; line-height: 1.5;
+}
+.illus {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-2); padding: 16px; overflow-x: auto;
+}
+.illus svg { display: block; width: 100%; height: auto; min-width: 440px; }
+
+.gui-win     { fill: #F0F3F4; stroke: #B9C7CA; }
+.gui-bar     { fill: #34535C; }
+.gui-tab     { fill: #DCE4E6; }
+.gui-tab.on  { fill: #F0F3F4; }
+.gui-log     { fill: #14232A; }
+.gui-txt     { font-family: var(--mono); font-size: 6.4px; fill: #8FA6AD; }
+.gui-txt.hi  { fill: #E8F2F3; }
+.gui-label   { font-family: var(--sans); font-size: 7px; fill: #FFFFFF; }
+.gui-tabtxt  { font-family: var(--sans); font-size: 6.5px; fill: #4A626C; }
+.gui-line    { stroke: #B9C7CA; stroke-width: .6; }
+.sel-band    { fill: #52BFBD; opacity: .28; }
+.copy-chip   { fill: #0C6E70; }
+.copy-chip-t { font-family: var(--mono); font-size: 6.6px; fill: #FFFFFF; }
+@media (prefers-reduced-motion: no-preference) {
+  .sel-band  { animation: sweep 6s ease-in-out infinite; transform-origin: left center; }
+  .copy-grp  { animation: chip 6s ease-in-out infinite; }
+}
+@keyframes sweep {
+  0%, 8%   { transform: scaleX(0); }
+  26%, 66% { transform: scaleX(1); }
+  84%,100% { transform: scaleX(1); opacity: .12; }
+}
+@keyframes chip {
+  0%, 60%  { opacity: 0; transform: translateY(3px); }
+  70%, 90% { opacity: 1; transform: translateY(0); }
+  100%     { opacity: 0; transform: translateY(0); }
+}
+
+/* animated terminal illustration */
+.term-demo {
+  background: var(--con-bg); border: 1px solid var(--con-line);
+  border-radius: var(--radius-2); overflow: hidden;
+}
+.term-demo .console-bar { background: var(--con-bar); }
+.term-body {
+  padding: 13px 15px; font-family: var(--mono); font-size: .76rem;
+  line-height: 1.75; color: var(--con-ink); min-height: 172px;
+}
+.term-body div { white-space: pre-wrap; word-break: break-all; }
+.term-body .p { color: var(--con-key); }
+.term-body .o { color: var(--con-dim); }
+.term-body .g { color: #7FCB9B; }
+@media (prefers-reduced-motion: no-preference) {
+  .term-body div { opacity: 0; animation: tline .3s ease-out forwards; }
+  /* the command, a beat while it runs, then the output arriving */
+  .term-body div:nth-child(1) { animation-delay: .5s; }
+  .term-body div:nth-child(2) { animation-delay: 1.6s; }
+  .term-body div:nth-child(3) { animation-delay: 2.0s; }
+  .term-body div:nth-child(4) { animation-delay: 2.4s; }
+  .term-body div:nth-child(5) { animation-delay: 2.8s; }
+  .caret { animation: blink 1.1s steps(1) infinite; }
+}
+@keyframes tline { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 50% { opacity: 0; } }
+.caret { color: var(--con-key); }
+
+/* folder tree */
+.tree {
+  font-family: var(--mono); font-size: .81rem; line-height: 1.85;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-2); padding: 15px 17px;
+  overflow-x: auto; white-space: pre; color: var(--ink-2);
+}
+.tree b { color: var(--ink); font-weight: 600; }
+.tree .tag {
+  font-family: var(--sans); font-size: .72rem; font-weight: 700;
+  color: var(--accent); letter-spacing: .04em;
+}
+
+/* ---------- misc ---------- */
+details.adv { margin-top: 6px; border-top: 1px solid var(--line-2); padding-top: 14px; }
+details.adv summary {
+  cursor: pointer; font-size: .84rem; font-weight: 600; color: var(--ink-2);
+  list-style: none; display: flex; gap: 8px; align-items: center;
+}
+details.adv summary::-webkit-details-marker { display: none; }
+details.adv summary::before { content: "+"; font-family: var(--mono); color: var(--accent); }
+details.adv[open] summary::before { content: "\2212"; }
+details.adv .adv-body { padding-top: 15px; }
+
+.callout {
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 12px 15px; border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: .87rem; color: var(--ink); margin: 16px 0;
+}
+.callout p { margin: 0; }
+.callout p + p { margin-top: 8px; }
+.callout strong { font-weight: 700; }
+
+.blocked {
+  border: 1px dashed var(--line); border-radius: var(--radius-2);
+  padding: 20px; color: var(--ink-3); font-size: .89rem; text-align: center;
+}
+
+.result-line { display: flex; gap: 9px; align-items: baseline; font-size: .87rem; padding: 5px 0; }
+.result-line .rk { font-family: var(--mono); color: var(--ink-3); flex: 0 0 auto; }
+
+footer.foot {
+  margin-top: 44px; padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: .81rem; color: var(--ink-3);
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(8px);
+  background: var(--ink); color: var(--ground);
+  padding: 9px 17px; border-radius: 100px; font-size: .84rem; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
+  z-index: 50; box-shadow: var(--shadow);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+#tests { display: none; }
+#tests.on { display: block; }
+.t-pass { color: var(--ok); }
+.t-fail { color: var(--bad); font-weight: 700; }
+#tests pre { font-family: var(--mono); font-size: .8rem; line-height: 1.7; white-space: pre-wrap; }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Group DIA-NN pipeline &middot; HPC cluster</p>
+  <h1>Set up a DIA-NN run without writing any code</h1>
+  <p class="standfirst">
+    Fill in four paths, paste the settings from your own DIA-NN, and this page writes the
+    configuration file for you. You never edit a file on the cluster &mdash;
+    <strong>you only copy, paste and press Enter.</strong>
+  </p>
+
+  <div class="overview">
+    <svg viewBox="0 0 660 108" role="img" aria-label="Overview: the pipeline runs four steps on the cluster after you submit.">
+      <line class="ov-track" x1="18" y1="46" x2="642" y2="46"></line>
+      <g class="ov-pulse"><circle cx="18" cy="46" r="3.4"></circle></g>
+      <g>
+        <rect class="ov-box" x="18" y="22" width="140" height="48" rx="3"></rect>
+        <text class="ov-num"  x="30" y="39">STEP 1</text>
+        <text class="ov-name" x="30" y="53">Search each file</text>
+        <text class="ov-sub"  x="30" y="65">one job per raw file</text>
+      </g>
+      <g>
+        <rect class="ov-box" x="176" y="22" width="140" height="48" rx="3"></rect>
+        <text class="ov-num"  x="188" y="39">STEP 2</text>
+        <text class="ov-name" x="188" y="53">Build the library</text>
+        <text class="ov-sub"  x="188" y="65">from all your samples</text>
+      </g>
+      <g>
+        <rect class="ov-box" x="334" y="22" width="140" height="48" rx="3"></rect>
+        <text class="ov-num"  x="346" y="39">STEP 3</text>
+        <text class="ov-name" x="346" y="53">Search again</text>
+        <text class="ov-sub"  x="346" y="65">against the new library</text>
+      </g>
+      <g>
+        <rect class="ov-box" x="492" y="22" width="150" height="48" rx="3"></rect>
+        <text class="ov-num"  x="504" y="39">STEP 4</text>
+        <text class="ov-name" x="504" y="53">Final report</text>
+        <text class="ov-sub"  x="504" y="65">one table of all samples</text>
+      </g>
+      <text class="ov-cap" x="18"  y="92">you submit once</text>
+      <text class="ov-cap" x="176" y="92">the cluster chains the rest automatically</text>
+      <text class="ov-cap" x="492" y="92">report lands in your output folder</text>
+    </svg>
+  </div>
+</header>
+
+<div class="layout">
+
+  <nav class="rail" aria-label="Steps">
+    <a class="rail-item on" href="#s1"><span class="rail-num">01</span><span>Your files</span></a>
+    <a class="rail-item"    href="#s2"><span class="rail-num">02</span><span>Settings</span></a>
+    <a class="rail-item"    href="#s3"><span class="rail-num">03</span><span>Config file</span></a>
+    <a class="rail-item"    href="#s4"><span class="rail-num">04</span><span>Run it</span></a>
+    <p class="rail-note">
+      Nothing on this page talks to the cluster. It only writes text for you to paste,
+      so you can safely try things out.
+    </p>
+  </nav>
+
+  <main>
+
+  <!-- ============ STEP 1 ============ -->
+  <section class="step" id="s1">
+    <div class="step-head"><span class="step-num">01</span><h2>Where are your files on the cluster?</h2></div>
+    <p class="step-intro">
+      Paths must be the ones <em>on the cluster</em> &mdash; they always start with a
+      <code>/</code>, never with <code>C:\</code>. Open the folder in the cluster's file
+      browser and copy the path from the address bar.
+    </p>
+
+    <figure>
+      <div class="tree"><span class="tag">SHARED &mdash; already set up for you</span>
+/scratch/&lt;project&gt;/DIA-NN/
+<b>├── 01_containers/</b>   diann-&lt;version&gt;.sif    <span class="tag">the software</span>
+<b>├── 02_scripts/</b>      diann_runner.sh        <span class="tag">the pipeline</span>
+<b>├── 03_resources/</b>
+│   <b>├── lib/</b>         *.speclib              <span class="tag">spectral libraries</span>
+│   <b>└── fasta/</b>       *.fasta                <span class="tag">protein databases</span>
+<b>└── 04_projects/</b>
+    <b>└── your_username/</b>
+        <b>└── my_experiment/</b>            <span class="tag">the experiment folder</span>
+            <b>├── raw_file/</b>       *.d or *.raw   <span class="tag">&larr; you point at this</span>
+            <b>├── configs/</b>                       <span class="tag">made for you</span>
+            <b>└── &lt;run name&gt;_output/</b>             <span class="tag">results appear here</span></div>
+      <figcaption>
+        You give the raw folder; the output folder and the configs folder are placed beside it
+        in the same experiment folder, so everything for one experiment stays together.
+        Exact names differ between clusters &mdash; copy the real path from the file browser.
+      </figcaption>
+    </figure>
+
+    <h3>Project</h3>
+    <div class="field">
+      <label for="projname">Short name for this run</label>
+      <p class="hint">Used to name your config file. Letters, numbers and underscores.</p>
+      <input type="text" id="projname" value="my_experiment" spellcheck="false" autocomplete="off">
+      <div class="msg" id="m-projname"></div>
+    </div>
+
+    <h3>Your data</h3>
+    <div class="field">
+      <span class="flabel">Folder(s) containing your raw files</span>
+      <p class="hint">
+        The folder that <em>contains</em> the <code>.d</code> or <code>.raw</code> files &mdash;
+        not a single file. Add more folders to analyse several batches together.
+      </p>
+      <div id="dirs"></div>
+      <button class="ghost" id="add-dir" type="button">+ Add another folder</button>
+    </div>
+
+    <div class="field">
+      <label for="outdir">Output folder</label>
+      <p class="hint">Created if it does not exist. Suggested beside your data folder, named after this run Created if it does not exist. Suggested from your data folder &mdash; change it if you like.mdash; change it if you like.</p>
+      <input type="text" id="outdir" spellcheck="false" autocomplete="off" placeholder="/scratch/&lt;project&gt;/DIA-NN/04_projects/your_username/my_experiment/output">
+      <div class="msg" id="m-outdir"></div>
+    </div>
+
+    <h3>Reference files</h3>
+    <div class="field">
+      <label for="libfile">Spectral library</label>
+      <p class="hint">The starting library for the first search. Ends in <code>.speclib</code>, <code>.parquet</code> or <code>.tsv</code>.</p>
+      <input type="text" id="libfile" spellcheck="false" autocomplete="off" placeholder="/scratch/&lt;project&gt;/DIA-NN/03_resources/lib/....speclib">
+      <div class="msg" id="m-libfile"></div>
+    </div>
+
+    <div class="field">
+      <label for="fastafile">FASTA protein database</label>
+      <p class="hint">Ends in <code>.fasta</code> or <code>.fa</code>.</p>
+      <input type="text" id="fastafile" spellcheck="false" autocomplete="off" placeholder="/scratch/&lt;project&gt;/DIA-NN/03_resources/fasta/....fasta">
+      <div class="msg" id="m-fastafile"></div>
+    </div>
+
+    <div class="field">
+      <label for="sif">DIA-NN version to use</label>
+      <p class="hint">
+        The <code>.sif</code> container file for the DIA-NN release you want. New versions
+        appear often &mdash; check the <code>01_containers</code> folder to see which are
+        available, and use the same one across a project so results stay comparable.
+      </p>
+      <input type="text" id="sif" spellcheck="false" autocomplete="off"
+             placeholder="/scratch/&lt;project&gt;/DIA-NN/01_containers/diann-&lt;version&gt;.sif">
+      <div class="msg" id="m-sif"></div>
+    </div>
+
+    <details class="adv">
+      <summary>Advanced &mdash; you can usually skip this</summary>
+      <div class="adv-body">
+        <div class="field">
+          <label for="chunk">Jobs submitted at a time</label>
+          <p class="hint">
+            Clusters cap how many jobs one account may queue. With more raw files than this,
+            the run is split into batches automatically. Leave at 350 unless you have been
+            told otherwise.
+          </p>
+          <input type="text" id="chunk" value="350" spellcheck="false" autocomplete="off" inputmode="numeric">
+          <div class="msg" id="m-chunk"></div>
+        </div>
+      </div>
+    </details>
+
+    <h3>Check the paths are right</h3>
+    <p class="hint">
+      This page cannot see the cluster, so it cannot confirm your paths exist. Copy this one
+      line, paste it into a terminal and press Enter &mdash; it checks every path, counts your
+      raw files, and prints a short report.
+    </p>
+    <div class="console">
+      <div class="console-bar">
+        <span class="dot"></span><span class="console-title">terminal &mdash; check paths</span>
+        <button type="button" data-copy="verify-cmd">Copy</button>
+      </div>
+      <pre id="verify-cmd"></pre>
+    </div>
+  </section>
+
+  <!-- ============ STEP 2 ============ -->
+  <section class="step" id="s2">
+    <div class="step-head"><span class="step-num">02</span><h2>Bring your settings over from DIA-NN</h2></div>
+    <p class="step-intro">
+      Set your search up in DIA-NN on your own computer the way you always do, then copy the
+      command line it prints and paste it below. Everything that belongs to your science is
+      kept; everything the cluster controls is removed.
+    </p>
+
+    <figure>
+      <div class="illus">
+        <svg viewBox="0 0 460 196" role="img" aria-label="In the DIA-NN window, the log pane at the bottom prints a long line starting with two dashes. Select that whole line and copy it.">
+          <rect class="gui-win" x="8" y="8" width="444" height="180" rx="3"></rect>
+          <rect class="gui-bar" x="8" y="8" width="444" height="17" rx="3"></rect>
+          <rect class="gui-bar" x="8" y="19" width="444" height="6"></rect>
+          <text class="gui-label" x="17" y="20">DIA-NN</text>
+          <rect class="gui-tab"    x="16"  y="31" width="52" height="13" rx="2"></rect>
+          <rect class="gui-tab on" x="70"  y="31" width="52" height="13" rx="2"></rect>
+          <rect class="gui-tab"    x="124" y="31" width="52" height="13" rx="2"></rect>
+          <text class="gui-tabtxt" x="24"  y="40">Input</text>
+          <text class="gui-tabtxt" x="80"  y="40">Output</text>
+          <text class="gui-tabtxt" x="130" y="40">Algorithm</text>
+          <line class="gui-line" x1="16" y1="52" x2="444" y2="52"></line>
+          <line class="gui-line" x1="16" y1="64" x2="300" y2="64"></line>
+          <line class="gui-line" x1="16" y1="76" x2="360" y2="76"></line>
+          <line class="gui-line" x1="16" y1="88" x2="250" y2="88"></line>
+
+          <rect class="gui-log" x="16" y="100" width="428" height="80" rx="2"></rect>
+          <text class="gui-txt" x="24" y="114">DIA-NN x.x.x Academia  (Data-Independent Acquisition by Neural Networks)</text>
+          <text class="gui-txt" x="24" y="126">Compiled on ...</text>
+          <rect class="sel-band" x="22" y="132" width="416" height="11" rx="1"></rect>
+          <text class="gui-txt hi" x="24" y="141">diann.exe --f "D:\data\s1.d" --qvalue 0.01 --matrices --var-mod ...</text>
+
+          <text class="gui-txt" x="24" y="154">Thread number set to 8</text>
+          <text class="gui-txt" x="24" y="166">Output will be filtered at 0.01 FDR</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        The line you want is the long one starting with <code>--</code>.
+      </figcaption>
+    </figure>
+
+    <h3>No DIA-NN log handy? Start from a preset</h3>
+    <div class="preset-row" id="presets"></div>
+
+    <div class="field">
+      <label for="params">Paste the DIA-NN command line (or the whole log)</label>
+      <textarea id="params" spellcheck="false" autocomplete="off"
+        placeholder="diann.exe --f &quot;D:\data\sample1.d&quot; --lib &quot;&quot; --threads 8 --qvalue 0.01 --matrices --var-mod UniMod:21,79.966331,STY ..."></textarea>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+  </section>
+
+  <!-- ============ STEP 3 ============ -->
+  <section class="step" id="s3">
+    <div class="step-head"><span class="step-num">03</span><h2>Your configuration file</h2></div>
+    <p class="step-intro">
+      This is the file the pipeline reads. You do not need to understand it &mdash; but everything
+      you entered is visible here, so it is worth a glance before you run.
+    </p>
+
+    <div id="config-area"></div>
+
+    <h3>Put it on the cluster</h3>
+    <p class="hint">
+      Copy this one line, paste it into a terminal and press Enter. It writes the file for you
+      and confirms where it went &mdash; no editing, no file transfer. The scrambled text is
+      your config encoded, so nothing in your paths can be mangled on the way in; the readable
+      version is right above.
+    </p>
+    <div class="console">
+      <div class="console-bar">
+        <span class="dot"></span><span class="console-title" id="heredoc-title">terminal &mdash; write the config file</span>
+        <button type="button" data-copy="heredoc">Copy</button>
+      </div>
+      <pre id="heredoc"></pre>
+    </div>
+    <div class="btn-row">
+      <button type="button" id="dl" class="ghost">Download config.sh instead</button>
+    </div>
+    <div class="callout">
+      <p>
+        <strong>Prefer pasting.</strong> A file downloaded on Windows carries invisible line
+        endings that make the cluster fail with <code>$'\r': command not found</code>. If you do
+        download and upload it, run <code>sed -i 's/\r$//' yourfile_config.sh</code> once
+        afterwards to clean it.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ STEP 4 ============ -->
+  <section class="step" id="s4">
+    <div class="step-head"><span class="step-num">04</span><h2>Start the run</h2></div>
+    <p class="step-intro">
+      One line, pasted into the same terminal. It starts everything &mdash; all four steps,
+      in order, on their own.
+    </p>
+
+    <div class="console">
+      <div class="console-bar">
+        <span class="dot"></span><span class="console-title">terminal &mdash; start the run</span>
+        <button type="button" data-copy="run-cmd">Copy</button>
+      </div>
+      <pre id="run-cmd"></pre>
+    </div>
+
+    <figure>
+      <div class="term-demo">
+        <div class="console-bar">
+          <span class="dot"></span><span class="console-title">what you will see</span>
+        </div>
+        <div class="term-body" aria-hidden="true">
+          <div><span class="p">$</span> /scratch/&lt;project&gt;/DIA-NN/02_scripts/diann_runner.sh ~/diann_configs/my_experiment_config.sh</div>
+          <div class="o">--- Starting DIA-NN Workflow ---</div>
+          <div class="o">Found 308 raw files across 1 folder(s).</div>
+          <div class="g">Step 1 chunk 0/0 (array 0-307) submitted. Job ID: 30392540</div>
+          <div class="g">--- Workflow successfully submitted. --- <span class="caret">&#9608;</span></div>
+        </div>
+      </div>
+      <figcaption>
+        Job ID numbers mean it worked. Steps 2, 3 and 4 are submitted automatically as each one
+        finishes &mdash; you do not run them yourself.
+      </figcaption>
+    </figure>
+
+    <h3>While it runs</h3>
+    <div class="console">
+      <div class="console-bar">
+        <span class="dot"></span><span class="console-title">terminal &mdash; check progress</span>
+        <button type="button" data-copy="watch-cmd">Copy</button>
+      </div>
+      <pre id="watch-cmd"></pre>
+    </div>
+    <p class="hint">
+      An empty list means everything has finished. <code>PD</code> means waiting for its turn,
+      <code>R</code> means running.
+    </p>
+
+    <h3>Where your results land</h3>
+    <div id="results-where"></div>
+    <div class="callout">
+      <p>
+        <strong>Something went wrong?</strong> Every job writes a log into the
+        <code>logs/</code> folder inside your output folder. Send that file to whoever
+        maintains the pipeline &mdash; it says exactly what failed.
+      </p>
+    </div>
+  </section>
+
+  <section id="tests" class="step">
+    <div class="step-head"><span class="step-num">&#9679;</span><h2>Self-test</h2></div>
+    <pre id="test-out"></pre>
+  </section>
+
+  </main>
+</div>
+
+<footer class="foot">
+  <span>DIA-NN Config Builder &mdash; writes text only, never contacts the cluster.</span>
+  <span>Pipeline: <span class="inline-code">diann_runner.sh</span></span>
+</footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Constants tied to the pipeline. If diann_runner.sh moves or
+   config.sh gains a field, these are the only things to change.
+   ============================================================ */
+/* The one fixed thing: where the shared pipeline lives. diann_runner.sh knows
+   its own folder internally, so calling it by full path works from anywhere and
+   the user never has to cd or fill this in. */
+var RUNNER = "/scratch/project_2000752/DIA-NN/02_scripts/diann_runner.sh";
+
+/* DIA-NN releases often, so the container stays a field rather than a default. */
+/* Only used when the raw folder is not usable yet. */
+var CONFIG_HOME_FALLBACK = "~/diann_configs";
+var DEFAULT_CHUNK = 350;
+/* Longest run of base64 put on one line. Terminals read a pasted line into a
+   fixed buffer, so keep well under it. */
+var B64_CHUNK = 500;
+/* Above this, a single pasted line risks being truncated by that buffer, so
+   the payload gets split across independent lines instead. */
+var MAX_ONE_LINE = 3500;
+
+/* Flags the pipeline supplies itself. Anything not listed here is kept,
+   so a DIA-NN version with new options still works. */
+var PIPELINE_FLAGS = {
+  "f":               "your raw files come from the folders in Step 1",
+  "dir":             "your raw files come from the folders in Step 1",
+  "lib":             "set from your spectral library path",
+  "fasta":           "set from your FASTA path",
+  "out":             "each step writes its own report",
+  "out-lib":         "Step 2 names the project library",
+  "temp":            "each step uses its own working folder",
+  "threads":         "set to the cores the cluster gives each job",
+  "gen-spec-lib":    "Step 2 builds the library",
+  "use-quant":       "Steps 2 and 4 add this",
+  "reuse-quant":     "Steps 2 and 4 add this",
+  "quant-ori-names": "every step adds this",
+  "predictor":       "the library is predicted once, before the run",
+  "fasta-search":    "the library is predicted once, before the run",
+  "cfg":             "would load a second settings file",
+  "no-quant-files":  "the pipeline needs .quant files to pass work between steps",
+  /* the four steps already are a reanalysis: search, build a library from all
+     samples, search again against it, report. Doing it inside one step too
+     would duplicate the work and fight the pipeline. */
+  "reanalyse":       "the four steps already reanalyse against a library built from all your samples",
+  "reanalyze":       "the four steps already reanalyse against a library built from all your samples"
+};
+
+var PRESETS = {
+  "Phospho, human (TIPS)":
+    "--verbose 2 --qvalue 0.01 --matrices --met-excision --cut K*,R* --missed-cleavages 1 " +
+    "--unimod4 --var-mod UniMod:21,79.966331,STY --var-mods 3 --mass-acc 15 --mass-acc-ms1 15 " +
+    "--peptidoforms --rt-profiling --pg-level 1 --min-pep-len 7 --max-pep-len 30 " +
+    "--min-pr-charge 2 --max-pr-charge 4 --min-pr-mz 300 --max-pr-mz 1600",
+  "Total proteome, human":
+    "--verbose 2 --qvalue 0.01 --matrices --met-excision --cut K*,R* --missed-cleavages 1 " +
+    "--unimod4 --var-mods 1 --mass-acc 15 --mass-acc-ms1 15 --rt-profiling --pg-level 2 " +
+    "--min-pep-len 7 --max-pep-len 30 --min-pr-charge 2 --max-pr-charge 4 " +
+    "--min-pr-mz 300 --max-pr-mz 1600"
+};
+
+/* ============================================================
+   Pure logic (also exercised by the self-test at ?test=1)
+   ============================================================ */
+
+/* Split on whitespace, honouring quotes. Quoted empty strings survive as ""
+   because DIA-NN emits things like: --lib "" */
+function tokenize(s) {
+  var out = [], cur = "", quote = null, quoted = false, i, c;
+  for (i = 0; i < s.length; i++) {
+    c = s.charAt(i);
+    if (quote) {
+      if (c === quote) { quote = null; } else { cur += c; }
+    } else if (c === '"' || c === "'") {
+      quote = c; quoted = true;
+    } else if (/\s/.test(c)) {
+      if (cur !== "" || quoted) { out.push(cur); cur = ""; quoted = false; }
+    } else {
+      cur += c;
+    }
+  }
+  if (cur !== "" || quoted) { out.push(cur); }
+  return out;
+}
+
+function countFlags(line) {
+  return (line.match(/(^|\s)--[A-Za-z0-9][A-Za-z0-9-]*/g) || []).length;
+}
+
+var EXE_RE = /(^|[\\\/\s])diann(\.exe|-linux)/i;
+
+/* A paste can be a bare command line, a whole DIA-NN log, or a command line
+   that got hard-wrapped by email or a narrow terminal. Take the largest
+   *contiguous run* of flag-bearing lines: that rejoins a wrapped command
+   without swallowing the prose around it in a full log. Report how many flags
+   were left behind, so silently dropping half a user's settings is impossible. */
+function extractCommandLine(raw) {
+  var lines = String(raw).split(/\r?\n/);
+  var blocks = [], cur = null, i, n, dense = false;
+
+  /* A real DIA-NN command line is dense in flags. If nothing in the paste
+     looks like one, the user pasted a fragment - join it all and let the
+     flag checks below deal with whatever comes out. */
+  for (i = 0; i < lines.length; i++) {
+    if (countFlags(lines[i]) >= 2) { dense = true; break; }
+  }
+  if (!dense) {
+    return { text: String(raw).replace(/\r?\n/g, " "), ignored: 0 };
+  }
+
+  for (i = 0; i < lines.length; i++) {
+    n = countFlags(lines[i]);
+    /* One stray --word does not make a line part of the command: a note like
+       "Warning: --reanalyse is not recommended" sitting next to the real
+       command line would otherwise be swallowed into DIANN_PARAMS. A genuine
+       continuation either starts with a flag or carries several. */
+    if (n === 0 || (n < 2 && !/^\s*--[A-Za-z0-9]/.test(lines[i]))) {
+      cur = null;
+      continue;
+    }
+    /* a second "diann.exe ..." means a new command, not a continuation */
+    if (cur && EXE_RE.test(lines[i])) { cur = null; }
+    if (!cur) { cur = { lines: [], flags: 0 }; blocks.push(cur); }
+    cur.lines.push(lines[i]);
+    cur.flags += n;
+  }
+
+  if (!blocks.length) {
+    return { text: String(raw).replace(/\r?\n/g, " "), ignored: 0 };
+  }
+
+  var best = blocks[0], total = 0;
+  for (i = 0; i < blocks.length; i++) {
+    total += blocks[i].flags;
+    if (blocks[i].flags > best.flags) { best = blocks[i]; }
+  }
+  return { text: best.lines.join(" "), ignored: total - best.flags };
+}
+
+/* A drive letter must be followed by a slash, so mod specs like C:57.02 are
+   not mistaken for paths. A backslash anywhere still means Windows. */
+function isWindowsPath(v) {
+  return /^[A-Za-z]:[\\/]/.test(v) || v.indexOf("\\") !== -1;
+}
+
+/* DIANN_PARAMS is expanded UNQUOTED by 1.sh-4.sh, so the shell word-splits it
+   before DIA-NN ever sees it. A value containing a space or a quote therefore
+   cannot survive the trip no matter how it is escaped, and $ or a backtick
+   would execute when the config is sourced. Allow only what round-trips.
+
+   "!" is in the set on purpose: it is how DIA-NN writes an exclusion in a
+   cleavage spec (--cut K*,R*,!*P is plain Trypsin), and bash does not history-
+   expand inside a quoted here-document or a non-interactive shell. */
+var SAFE_FLAG  = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+var SAFE_VALUE = /^[A-Za-z0-9.,:*_+=!\/\[\]-]+$/;
+
+/* Group a token stream into {flag, values}. Tokens before the first flag
+   (the executable path) are discarded, as is a bare "--". */
+function parseFlags(tokens) {
+  var groups = [], cur = null, i, t;
+  for (i = 0; i < tokens.length; i++) {
+    t = tokens[i];
+    if (t === "--") { continue; }
+    if (t.length > 2 && t.slice(0, 2) === "--") {
+      cur = { flag: t.slice(2), values: [] };
+      groups.push(cur);
+    } else if (cur) {
+      cur.values.push(t);
+    }
+  }
+  return groups;
+}
+
+/* The heart of Step 2: keep the science, drop what the pipeline owns. */
+function trimParams(raw) {
+  var res = { params: "", kept: [], removed: [], warnings: [] };
+  if (!raw || !String(raw).trim()) { return res; }
+
+  var extracted = extractCommandLine(raw);
+  var groups = parseFlags(tokenize(extracted.text));
+  if (!groups.length) {
+    res.warnings.push("No settings starting with -- were found. Copy the long line from the DIA-NN log that begins with --.");
+    return res;
+  }
+
+  var seen = {}, sawWindows = false, parts = [], i, g, key, joined;
+
+  for (i = 0; i < groups.length; i++) {
+    g = groups[i];
+    joined = g.values.join(" ");
+
+    if (Object.prototype.hasOwnProperty.call(PIPELINE_FLAGS, g.flag)) {
+      res.removed.push({ flag: g.flag, value: joined, why: PIPELINE_FLAGS[g.flag] });
+      if (g.values.some(isWindowsPath)) { sawWindows = true; }
+      continue;
+    }
+    if (g.values.some(isWindowsPath)) {
+      sawWindows = true;
+      res.removed.push({ flag: g.flag, value: joined, why: "points at a folder on your own computer, which the cluster cannot see" });
+      continue;
+    }
+    if (!SAFE_FLAG.test(g.flag)) {
+      res.removed.push({ flag: g.flag, value: joined, why: "the setting name contains an unexpected symbol, so it was left out" });
+      continue;
+    }
+    if (g.values.some(function (v) { return v === ""; })) {
+      res.removed.push({
+        flag: g.flag, value: joined,
+        why: "one of its values is empty, so it would disappear on the way to DIA-NN"
+      });
+      continue;
+    }
+    if (g.values.some(function (v) { return !SAFE_VALUE.test(v); })) {
+      res.removed.push({
+        flag: g.flag, value: joined,
+        why: "the value contains a space or a symbol the cluster would split apart or act on before DIA-NN saw it"
+      });
+      continue;
+    }
+
+    key = g.flag + "\u0000" + joined;
+    if (Object.prototype.hasOwnProperty.call(seen, key)) { continue; }
+    seen[key] = true;
+
+    res.kept.push({ flag: g.flag, value: joined });
+    parts.push("--" + g.flag);
+    g.values.forEach(function (v) { parts.push(v); });
+  }
+
+  res.params = parts.join(" ");
+
+  /* The config carries exactly one FASTA and one library. If the pasted
+     command listed several, say so — silently keeping the Step 1 field would
+     search against less than the user thinks. */
+  var nFasta = 0, nLib = 0;
+  for (i = 0; i < groups.length; i++) {
+    if (groups[i].flag === "fasta") { nFasta++; }
+    if (groups[i].flag === "lib" && groups[i].values.join("") !== "") { nLib++; }
+  }
+  if (nFasta > 1) {
+    res.warnings.push(
+      "Your DIA-NN command listed " + nFasta + " FASTA files. A run uses one — " +
+      "combine them into a single FASTA first, then give that one path in Step 1."
+    );
+  }
+  if (nLib > 1) {
+    res.warnings.push(
+      "Your DIA-NN command listed " + nLib + " spectral libraries. A run uses one — " +
+      "pick the one you want in Step 1."
+    );
+  }
+
+  if (extracted.ignored > 0) {
+    res.warnings.push(
+      "Another " + extracted.ignored + " setting(s) were found elsewhere in what you pasted and were left out. " +
+      "If your command line was split across separate paragraphs, join it back into one block and paste again — " +
+      "otherwise check the Kept list below is really everything you meant."
+    );
+  }
+  if (sawWindows) {
+    res.warnings.push("Paths from your own computer were removed. That is expected \u2014 the cluster uses the folders you entered in Step 1.");
+  }
+  if (!res.kept.length) {
+    res.warnings.push("Nothing was left after removing the settings the pipeline controls. Check you copied the whole line, or start from a preset above.");
+  }
+  return res;
+}
+
+/* Path checks. The page cannot see the cluster, so these are shape checks only.
+   Every applicable rule is collected and the most severe one is shown, so a
+   minor warning can never hide a real error further down. */
+function checkPath(value, kind) {
+  var v = String(value == null ? "" : value).trim();
+  if (!v) {
+    return kind === "dir-extra" ? null : { level: "err", text: "Required." };
+  }
+
+  var found = [];
+  function add(level, text) { found.push({ level: level, text: text }); }
+
+  if (isWindowsPath(v)) {
+    add("err", "That is a path on your own computer. Cluster paths start with / \u2014 for example /scratch/...");
+  }
+  /* These characters are re-interpreted by the shell when the config is
+     sourced: $ and ` would run something, a quote would break the file. */
+  if (/["'`$]/.test(v)) {
+    add("err", "Cannot contain the characters  \"  '  `  or  $  \u2014 the cluster would treat them as commands rather than as part of the name.");
+  }
+  if (v.charAt(0) !== "/") {
+    add("err", "Must start with / (the full path on the cluster).");
+  }
+
+  if (kind === "dir" || kind === "dir-extra") {
+    if (/\.(d|raw)\/?$/i.test(v)) {
+      add("err", "That is one raw file. Give the folder that contains your .d or .raw files instead.");
+    }
+  }
+  if (kind === "lib" && !/\.(speclib|parquet|tsv)$/i.test(v)) {
+    add("warn", "Usually ends in .speclib, .parquet or .tsv \u2014 check this is the library file itself.");
+  }
+  if (kind === "fasta" && !/\.(fasta|fa|fas)$/i.test(v)) {
+    add("warn", "Usually ends in .fasta or .fa \u2014 check this is the database file itself.");
+  }
+  if (kind === "sif") {
+    if (!/\.sif$/i.test(v)) {
+      add("err", "The container file must end in .sif");
+    } else if (!/diann-[^/]*\.sif$/i.test(v)) {
+      add("warn", "The pipeline reads the version from the file name, which should look like diann-<version>.sif");
+    }
+  }
+
+  if (v.indexOf("//") !== -1) {
+    add("warn", "Contains a double slash \u2014 check for a typo.");
+  }
+  if (/\s/.test(v)) {
+    add("warn", "Contains a space. It will be quoted correctly, but renaming the folder avoids trouble later.");
+  }
+  if (v.indexOf("/scratch/") !== 0 && v.indexOf("/projappl/") !== 0 && v.indexOf("/users/") !== 0) {
+    add("warn", "Most project data sits under /scratch/... \u2014 double-check this path.");
+  }
+
+  var i;
+  for (i = 0; i < found.length; i++) { if (found[i].level === "err") { return found[i]; } }
+  if (found.length) { return found[0]; }
+  return { level: "ok", text: "Looks right." };
+}
+
+/* One parse used for both the message and the emitted value, so the page can
+   never validate one number and write a different one. */
+function parseChunk(value) {
+  var v = String(value == null ? "" : value).trim();
+  if (!/^[0-9]+$/.test(v)) {
+    return { ok: false, value: null, level: "err", text: "Must be a whole number of jobs, digits only." };
+  }
+  var n = parseInt(v, 10);
+  if (n < 1) {
+    return { ok: false, value: null, level: "err", text: "Must be at least 1." };
+  }
+  /* The runner queues CHUNK_SIZE array tasks plus one shim job. A typical
+     per-account cap is 400, so 399 is the largest that always fits \u2014 but the
+     cap differs between clusters, so warn rather than block. */
+  if (n > 399) {
+    return { ok: true, value: n, level: "warn", text: "Many clusters allow only 400 queued jobs at once, and the run needs one spare. If the submission is refused, come back and use 399." };
+  }
+  return { ok: true, value: n, level: null, text: "" };
+}
+
+function safeName(s) {
+  var n = String(s || "").trim().replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  return n || "my_experiment";
+}
+
+function stripTrailingSlash(p) {
+  var v = String(p || "").trim();
+  return v.length > 1 ? v.replace(/\/+$/, "") : v;
+}
+
+/* The folder holding a raw folder is the experiment folder. */
+function parentOf(p) {
+  var v = stripTrailingSlash(p);
+  if (!v || v.charAt(0) !== "/") { return ""; }
+  var idx = v.lastIndexOf("/");
+  return idx > 0 ? v.slice(0, idx) : "";
+}
+
+/* Output goes beside the raw folders, in the experiment folder, named after
+   this run. Including the run name keeps two experiments in the same folder
+   from sharing an OUTPUT_DIR, where their .quant files would collide by name. */
+function suggestOutput(firstDir, project) {
+  var parent = parentOf(firstDir);
+  return parent ? parent + "/" + safeName(project) + "_output" : "";
+}
+
+/* Configs live beside the raw folders and the output, so everything belonging
+   to one experiment sits together and is found by whoever picks it up next. */
+function configHome(s) {
+  var first = "", i;
+  for (i = 0; i < (s.dirs || []).length; i++) {
+    if (String(s.dirs[i]).trim()) { first = s.dirs[i]; break; }
+  }
+  var parent = parentOf(first);
+  return parent ? parent + "/configs" : CONFIG_HOME_FALLBACK;
+}
+
+/* Build config.sh. Single-quoted JS strings throughout so bash ${...}
+   is emitted literally and never read as JS interpolation. */
+function buildConfig(s) {
+  var L = [];
+  L.push('#!/bin/bash');
+  L.push('################################################################################');
+  L.push('#                       DIA-NN WORKFLOW CONFIGURATION');
+  L.push('#  Written by the DIA-NN Config Builder for project: ' + safeName(s.project));
+  L.push('################################################################################');
+  L.push('');
+  L.push('# --- CORE PATHS ---');
+  L.push('');
+  L.push('# Folder(s) holding the .d / .raw files. Append another line to add a batch');
+  L.push('# later: already-searched files are reused, only new ones are quantified.');
+  L.push('DATA_DIRS=(');
+  /* Blank rows come from "Add another folder" left unfilled. An empty entry
+     makes diann_runner.sh abort with an empty path in the message. */
+  s.dirs.forEach(function (d) {
+    if (String(d).trim()) { L.push('    "' + stripTrailingSlash(d) + '"'); }
+  });
+  L.push(')');
+  L.push('');
+  L.push('# Everything the run produces is created under here.');
+  L.push('OUTPUT_DIR="' + stripTrailingSlash(s.outdir) + '"');
+  L.push('');
+  L.push('# Spectral library used for the first search.');
+  L.push('LIB_FILE="' + stripTrailingSlash(s.libfile) + '"');
+  L.push('');
+  L.push('# Protein sequence database.');
+  L.push('FASTA_FILE="' + stripTrailingSlash(s.fastafile) + '"');
+  L.push('');
+  L.push('# DIA-NN software container.');
+  L.push('CONTAINER_SIF="' + stripTrailingSlash(s.sif) + '"');
+  L.push('');
+  L.push('# Version and binary path are read from the container file name.');
+  L.push('DIANN_VERSION="${CONTAINER_SIF##*diann-}"');
+  L.push('DIANN_VERSION="${DIANN_VERSION%.sif}"');
+  L.push('DIANN_BIN_PATH="/diann-${DIANN_VERSION}/diann-linux"');
+  L.push('');
+
+  var chunk = parseChunk(s.chunk);
+  if (chunk.ok && chunk.value !== DEFAULT_CHUNK) {
+    L.push('# How many cluster jobs may be queued at once.');
+    L.push('CHUNK_SIZE=' + chunk.value);
+    L.push('');
+  }
+
+  L.push('# --- DIA-NN PARAMETERS ---');
+  L.push('# Your search settings. Paths, threads and library flags are added by the');
+  L.push('# pipeline itself and must not appear here.');
+  L.push('DIANN_PARAMS="' + s.params + '"');
+  L.push('');
+  return L.join("\n");
+}
+
+function configPath(s) { return configHome(s) + "/" + safeName(s.project) + "_config.sh"; }
+
+/* UTF-8 safe base64, so a path with a non-ASCII character still encodes. */
+function toBase64(text) {
+  return btoa(unescape(encodeURIComponent(text)));
+}
+
+/* A terminal runs a *pasted* block one line at a time, which tears apart any
+   multi-line construct. Text *piped into* bash never passes through the
+   terminal that way, so a script sent down a pipe can use a here-document
+   freely and — the real win — can format its own output.
+   Everything the user pastes is therefore one short line:
+       echo '<base64>' | base64 -d | bash
+   One paste, one Enter, and readable output instead of echoed paths strewn
+   between prompts. Encoding also means no quote, $ or newline in the user's
+   own text can be re-interpreted on the way in. */
+function asOneLiner(script) {
+  return "echo '" + toBase64(script) + "' | base64 -d | bash";
+}
+
+/* A very long single line can be truncated by the terminal's input buffer, so
+   past a safe size the payload is written out in independent chunks and piped
+   to bash afterwards. Still nothing that spans lines. */
+function asPastedScript(script, tmp) {
+  var line = asOneLiner(script);
+  if (line.length <= MAX_ONE_LINE) { return line; }
+
+  var b64 = toBase64(script), lines = [], i, first = true;
+  for (i = 0; i < b64.length; i += B64_CHUNK) {
+    lines.push("printf '%s' '" + b64.substr(i, B64_CHUNK) + "' " + (first ? ">" : ">>") + " " + tmp);
+    first = false;
+  }
+  lines.push("base64 -d " + tmp + " | bash && rm -f " + tmp);
+  return lines.join("\n");
+}
+
+/* Writes the config, says what it did, and shows the command to run next.
+   'DIANNEOF' is quoted so ${CONTAINER_SIF##*diann-} is written literally
+   instead of being expanded. */
+function buildWriteScript(s, config) {
+  var body = config.charAt(config.length - 1) === "\n" ? config : config + "\n";
+  var p = configPath(s);
+  return "mkdir -p " + configHome(s) + "\n" +
+         "if [ -e " + p + " ]; then\n" +
+         "  cp " + p + " " + p + ".bak\n" +
+         '  echo "  the previous version was kept as ' + p + '.bak"\n' +
+         "fi\n" +
+         "cat > " + p + " << 'DIANNEOF'\n" +
+         body +
+         "DIANNEOF\n" +
+         "echo\n" +
+         'echo "  Config written to ' + p + '"\n' +
+         "echo\n" +
+         'echo "  Now start the run with:"\n' +
+         'echo "  ' + RUNNER + " " + p + '"\n' +
+         "echo\n";
+}
+
+/* The staging file must live somewhere that already exists: the config folder
+   is created by the script itself, so writing the payload there would fail
+   before the script ever runs. $HOME always exists. */
+function buildWriteCommand(s, config) {
+  return asPastedScript(buildWriteScript(s, config), "$HOME/.diann_config.b64");
+}
+
+/* One line: the runner by full path, with the config as its only argument.
+   No cd, so there is nothing to get wrong and nothing to paste twice. */
+function buildRunCommand(s) {
+  return RUNNER + " " + configPath(s);
+}
+
+/* Step 1 is the first thing a user copies, so this must be safe on its own and
+   not rely on the later steps having blocked anything: the paths land inside
+   double quotes, where $( ) would run rather than be checked. */
+function pathIsShellSafe(p) {
+  return !/["'`$\\]/.test(String(p));
+}
+
+/* The script behind the Step 1 check. It prints a verdict per path with the
+   path on its own indented line, so a long /scratch/... path wrapping cannot
+   be confused with the next result. */
+function buildCheckScript(s) {
+  var L = [], checks = [], counts = [];
+
+  function take(label, p) {
+    if (!String(p).trim() || !pathIsShellSafe(p)) { return; }
+    checks.push({ label: label, path: stripTrailingSlash(p) });
+  }
+  s.dirs.forEach(function (d, i) {
+    take(s.dirs.length > 1 ? "raw folder " + (i + 1) : "raw folder", d);
+    if (String(d).trim() && pathIsShellSafe(d)) { counts.push(stripTrailingSlash(d)); }
+  });
+  take("library", s.libfile);
+  take("FASTA", s.fastafile);
+  take("DIA-NN", s.sif);
+  if (!checks.length) { return null; }
+
+  L.push("echo");
+  L.push('echo "  Checking ' + checks.length + ' path(s)"');
+  L.push("echo");
+  L.push("missing=0");
+  checks.forEach(function (c) {
+    L.push('if [ -e "' + c.path + '" ]; then');
+    L.push('  printf "  found     %s\\n" "' + c.label + '"');
+    L.push("else");
+    L.push('  printf "  MISSING   %s\\n" "' + c.label + '"');
+    L.push("  missing=$((missing+1))");
+    L.push("fi");
+    L.push('echo "            ' + c.path + '"');
+  });
+
+  counts.forEach(function (dir) {
+    L.push("echo");
+    L.push("n=$(find \"" + dir + "\" -maxdepth 1 \\( -name '*.d' -o -name '*.raw' \\) 2>/dev/null | wc -l)");
+    L.push('printf "  %s raw file(s) found in\\n" "$n"');
+    L.push('echo "            ' + dir + '"');
+  });
+
+  L.push("echo");
+  L.push('if [ "$missing" -eq 0 ]; then');
+  L.push('  echo "  All paths are there. Carry on to Step 2."');
+  L.push("else");
+  L.push('  echo "  $missing path(s) not found - correct them in Step 1 and check again."');
+  L.push("fi");
+  L.push("echo");
+  return L.join("\n") + "\n";
+}
+
+function buildVerifyCommand(s) {
+  var anyUnsafe = false;
+  s.dirs.concat([s.libfile, s.fastafile, s.sif]).forEach(function (p) {
+    if (String(p).trim() && !pathIsShellSafe(p)) { anyUnsafe = true; }
+  });
+  if (anyUnsafe) {
+    return "# One of your paths contains a character the cluster would treat as a\n" +
+           "# command (a quote, a backtick or a $). Fix the fields marked in red\n" +
+           "# above and this check will appear here.";
+  }
+
+  var script = buildCheckScript(s);
+  if (!script) { return "# Fill in your paths above and this check will appear here."; }
+  return asPastedScript(script, "$HOME/.diann_check.b64");
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+var state = {
+  project: "my_experiment",
+  dirs: [""],
+  outdir: "",
+  outdirTouched: false,
+  libfile: "",
+  fastafile: "",
+  sif: "",
+  chunk: String(DEFAULT_CHUNK),
+  raw: "",
+  params: "",
+  ready: false
+};
+
+function el(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function showMsg(id, result) {
+  var node = el(id);
+  if (!node) { return; }
+  if (!result) { node.innerHTML = ""; return; }
+  var mark = result.level === "err" ? "!" : (result.level === "warn" ? "!" : "\u2713");
+  var cls  = result.level === "err" ? "err" : (result.level === "warn" ? "warn" : "ok");
+  node.className = "msg " + cls;
+  node.innerHTML = '<span class="msg-mark">' + mark + '</span><span>' + esc(result.text) + "</span>";
+}
+
+function markInput(node, result) {
+  if (!node) { return; }
+  node.classList.remove("bad", "warn");
+  if (result && result.level === "err")  { node.classList.add("bad"); }
+  if (result && result.level === "warn") { node.classList.add("warn"); }
+}
+
+function renderDirs() {
+  var host = el("dirs");
+  host.innerHTML = "";
+  state.dirs.forEach(function (val, i) {
+    var row = document.createElement("div");
+    row.className = "dir-row";
+
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = val;
+    input.spellcheck = false;
+    input.autocomplete = "off";
+    input.placeholder = i === 0
+      ? "/scratch/<project>/DIA-NN/04_projects/your_username/my_experiment/raw_file"
+      : "another folder of raw files";
+    input.setAttribute("aria-label", "Raw data folder " + (i + 1));
+    input.addEventListener("input", function () {
+      state.dirs[i] = input.value;
+      render();
+    });
+    row.appendChild(input);
+
+    if (state.dirs.length > 1) {
+      var rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "icon ghost";
+      rm.innerHTML = "&times;";
+      rm.title = "Remove this folder";
+      rm.setAttribute("aria-label", "Remove folder " + (i + 1));
+      rm.addEventListener("click", function () {
+        state.dirs.splice(i, 1);
+        renderDirs();
+        render();
+      });
+      row.appendChild(rm);
+    }
+
+    var msg = document.createElement("div");
+    msg.className = "msg";
+    msg.id = "m-dir-" + i;
+
+    host.appendChild(row);
+    host.appendChild(msg);
+  });
+}
+
+function renderVerdict(t) {
+  var host = el("verdict");
+  if (!state.raw.trim()) {
+    host.innerHTML = '<div class="blocked">Paste your DIA-NN command line above, or pick a preset, ' +
+                     'and the settings that will be used appear here.</div>';
+    return;
+  }
+
+  var html = "";
+
+  html += '<div class="panel keep"><div class="panel-head">Kept &mdash; your search settings ' +
+          '<span class="count">' + t.kept.length + '</span></div><div class="panel-body">';
+  if (t.kept.length) {
+    html += '<ul class="flag-list">';
+    t.kept.forEach(function (k) {
+      html += '<li><span class="flag-name">--' + esc(k.flag) + '</span>' +
+              (k.value ? '<span class="flag-val">' + esc(k.value) + "</span>" : "") + "</li>";
+    });
+    html += "</ul>";
+  } else {
+    html += '<p class="empty">Nothing kept yet.</p>';
+  }
+  html += "</div></div>";
+
+  html += '<div class="panel drop"><div class="panel-head">Removed &mdash; the pipeline sets these ' +
+          '<span class="count">' + t.removed.length + '</span></div><div class="panel-body">';
+  if (t.removed.length) {
+    html += '<ul class="flag-list">';
+    t.removed.forEach(function (r) {
+      html += '<li><span class="flag-name">--' + esc(r.flag) + '</span>' +
+              '<span class="flag-why">' + esc(r.why) + "</span></li>";
+    });
+    html += "</ul>";
+  } else {
+    html += '<p class="empty">Nothing needed removing.</p>';
+  }
+  html += "</div></div>";
+
+  if (t.warnings.length) {
+    html += '<div class="panel warn"><div class="panel-head">Worth reading ' +
+            '<span class="count">' + t.warnings.length + '</span></div><div class="panel-body">' +
+            '<ul class="flag-list">';
+    t.warnings.forEach(function (w) { html += '<li><span class="flag-why">' + esc(w) + "</span></li>"; });
+    html += "</ul></div></div>";
+  }
+
+  host.innerHTML = html;
+}
+
+/* Light syntax colouring for the config preview. Escapes first, so no
+   user text can inject markup. */
+function highlightConfig(text) {
+  return text.split("\n").map(function (line) {
+    var e = esc(line);
+    if (/^\s*#/.test(line)) { return '<span class="c">' + e + "</span>"; }
+    e = e.replace(/^([A-Z_][A-Z0-9_]*)=/, '<span class="k">$1</span>=');
+    e = e.replace(/(&quot;.*&quot;)/, '<span class="s">$1</span>');
+    return e;
+  }).join("\n");
+}
+
+function renderConfigArea(config, errorCount) {
+  var missing = [];
+  if (!state.dirs.some(function (d) { return String(d).trim(); })) { missing.push("a raw data folder"); }
+  if (!String(state.outdir).trim())    { missing.push("an output folder"); }
+  if (!String(state.libfile).trim())   { missing.push("a spectral library"); }
+  if (!String(state.fastafile).trim()) { missing.push("a FASTA file"); }
+  if (!state.params)                   { missing.push("your DIA-NN settings"); }
+
+  var host = el("config-area");
+  if (missing.length) {
+    host.innerHTML = '<div class="blocked">Still needed: ' + esc(missing.join(", ")) +
+                     ". Your config file appears here once those are filled in.</div>";
+    return false;
+  }
+  /* Never hand over a config built from a field the page has already flagged
+     as wrong — it would fail on the cluster hours later. */
+  if (errorCount > 0) {
+    host.innerHTML = '<div class="blocked">' + errorCount +
+      " field" + (errorCount === 1 ? "" : "s") + " above still need" + (errorCount === 1 ? "s" : "") +
+      " fixing (marked in red). Your config file appears here once they are sorted out.</div>";
+    return false;
+  }
+  host.innerHTML =
+    '<div class="console">' +
+      '<div class="console-bar">' +
+        '<span class="dot"></span>' +
+        '<span class="console-title">' + esc(safeName(state.project)) + "_config.sh</span>" +
+        '<button type="button" data-copy="config-pre">Copy</button>' +
+      "</div>" +
+      '<pre id="config-pre">' + highlightConfig(config) + "</pre>" +
+    "</div>";
+  return true;
+}
+
+function renderResults() {
+  var out = stripTrailingSlash(state.outdir) || "your output folder";
+  el("results-where").innerHTML =
+    '<div class="result-line"><span class="rk">report</span><span class="inline-code">' +
+      esc(out) + "/step4_report/final_report_*.tsv</span></div>" +
+    '<div class="result-line"><span class="rk">matrices</span><span class="inline-code">' +
+      esc(out) + "/step4_report/</span> (protein and peptide tables)</div>" +
+    '<div class="result-line"><span class="rk">logs</span><span class="inline-code">' +
+      esc(out) + "/logs/</span></div>";
+}
+
+function render() {
+  showMsg("m-projname", safeName(state.project) !== String(state.project).trim() && String(state.project).trim()
+    ? { level: "warn", text: "Will be saved as " + safeName(state.project) + "_config.sh" }
+    : null);
+
+  /* The suggestion depends on both the raw folder and the run name, so keep it
+     current until the user edits the output field themselves. */
+  if (!state.outdirTouched) {
+    var suggested = suggestOutput(state.dirs[0], state.project);
+    if (suggested !== state.outdir) {
+      state.outdir = suggested;
+      el("outdir").value = suggested;
+    }
+  }
+
+  var errors = 0;
+  function tally(r) { if (r && r.level === "err") { errors++; } return r; }
+
+  state.dirs.forEach(function (d, i) {
+    var r = tally(checkPath(d, i === 0 ? "dir" : "dir-extra"));
+    showMsg("m-dir-" + i, r);
+    markInput(el("dirs").querySelectorAll("input")[i], r);
+  });
+
+  [["outdir", "dir"], ["libfile", "lib"], ["fastafile", "fasta"],
+   ["sif", "sif"]].forEach(function (pair) {
+    var r = tally(checkPath(state[pair[0]], pair[1]));
+    showMsg("m-" + pair[0], r);
+    markInput(el(pair[0]), r);
+  });
+
+  var chunk = parseChunk(state.chunk);
+  var chunkMsg = chunk.level ? { level: chunk.level, text: chunk.text } : null;
+  tally(chunkMsg);
+  showMsg("m-chunk", chunkMsg);
+  markInput(el("chunk"), chunkMsg);
+
+  var t = trimParams(state.raw);
+  state.params = t.params;
+  renderVerdict(t);
+
+  var config = buildConfig(state);
+  var ready = renderConfigArea(config, errors);
+  state.ready = ready;
+
+  el("heredoc").textContent = ready
+    ? buildWriteCommand(state, config)
+    : "# Fill in Steps 1 and 2 and this appears here.";
+  el("heredoc-title").textContent = "terminal \u2014 write " + safeName(state.project) + "_config.sh";
+  el("run-cmd").textContent = buildRunCommand(state);
+  el("watch-cmd").textContent = "squeue -u $USER";
+  el("verify-cmd").textContent = buildVerifyCommand(state);
+  renderResults();
+}
+
+/* ---------- copy / download ---------- */
+var toastTimer = null;
+function toast(text) {
+  var t = el("toast");
+  t.textContent = text;
+  t.classList.add("show");
+  if (toastTimer) { clearTimeout(toastTimer); }
+  toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1900);
+}
+
+function selectNode(node) {
+  var range = document.createRange();
+  range.selectNodeContents(node);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function copyText(node) {
+  var text = node.textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      toast("Copied \u2014 paste it into your cluster terminal");
+    }, function () { fallbackCopy(node); });
+  } else {
+    fallbackCopy(node);
+  }
+}
+
+function fallbackCopy(node) {
+  selectNode(node);
+  var ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  toast(ok ? "Copied \u2014 paste it into your cluster terminal" : "Selected \u2014 press Ctrl + C to copy");
+}
+
+document.addEventListener("click", function (ev) {
+  var btn = ev.target.closest ? ev.target.closest("[data-copy]") : null;
+  if (!btn) { return; }
+  var node = el(btn.getAttribute("data-copy"));
+  if (node) { copyText(node); }
+});
+
+function bind(id, key) {
+  var node = el(id);
+  node.addEventListener("input", function () {
+    state[key] = node.value;
+    if (key === "outdir") { state.outdirTouched = true; }
+    render();
+  });
+}
+
+function init() {
+  el("projname").value = state.project;
+  el("sif").value = state.sif;
+  el("chunk").value = state.chunk;
+
+  bind("projname", "project");
+  bind("outdir", "outdir");
+  bind("libfile", "libfile");
+  bind("fastafile", "fastafile");
+  bind("sif", "sif");
+  bind("chunk", "chunk");
+  bind("params", "raw");
+
+  el("add-dir").addEventListener("click", function () {
+    state.dirs.push("");
+    renderDirs();
+    render();
+  });
+
+  var presetHost = el("presets");
+  Object.keys(PRESETS).forEach(function (name) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "preset";
+    b.textContent = name;
+    b.addEventListener("click", function () {
+      state.raw = PRESETS[name];
+      el("params").value = state.raw;
+      render();
+      toast("Loaded: " + name);
+    });
+    presetHost.appendChild(b);
+  });
+
+  el("dl").addEventListener("click", function () {
+    if (!state.ready) {
+      toast("Fill in the fields above first");
+      return;
+    }
+    var config = buildConfig(state);
+    /* Joined with \n only, so the file keeps Unix line endings. */
+    var blob = new Blob([config], { type: "text/x-shellscript;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = safeName(state.project) + "_config.sh";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+
+  /* highlight the step you are looking at */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".rail-item"));
+  if (window.IntersectionObserver) {
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) { return; }
+        links.forEach(function (l) {
+          l.classList.toggle("on", l.getAttribute("href") === "#" + entry.target.id);
+        });
+      });
+    }, { rootMargin: "-15% 0px -70% 0px" });
+    ["s1", "s2", "s3", "s4"].forEach(function (id) { obs.observe(el(id)); });
+  }
+
+  renderDirs();
+  render();
+
+  if (/[?&]test=1/.test(window.location.search)) { runTests(); }
+}
+
+/* ============================================================
+   Self-test  ( open this page with ?test=1 )
+   ============================================================ */
+function runTests() {
+  var out = [], pass = 0, fail = 0;
+
+  function ok(name, cond, detail) {
+    if (cond) { pass++; out.push('<span class="t-pass">PASS</span>  ' + esc(name)); }
+    else { fail++; out.push('<span class="t-fail">FAIL</span>  ' + esc(name) + (detail ? "\n        " + esc(detail) : "")); }
+  }
+  function eq(name, actual, expected) {
+    ok(name, actual === expected, "got: " + actual + "\n        want: " + expected);
+  }
+
+  /* tokenize */
+  eq("tokenize: plain", tokenize("--a b --c").join("|"), "--a|b|--c");
+  eq("tokenize: quoted value with spaces", tokenize('--f "D:\\my data\\s.d"').join("|"), '--f|D:\\my data\\s.d');
+  eq("tokenize: empty quoted survives", tokenize('--lib ""').join("|"), "--lib|");
+  eq("tokenize: single quotes", tokenize("--cut 'K*,R*'").join("|"), "--cut|K*,R*");
+  eq("tokenize: collapses runs of spaces", tokenize("--a    --b").join("|"), "--a|--b");
+
+  /* extractCommandLine */
+  eq("extract: picks the flag-rich line from a log",
+    extractCommandLine("DIA-NN 2.3.2\nLoading library\ndiann.exe --f x --qvalue 0.01 --matrices --verbose 2\nDone").text.trim(),
+    "diann.exe --f x --qvalue 0.01 --matrices --verbose 2");
+  eq("extract: single line passes through", extractCommandLine("--qvalue 0.01").text.trim(), "--qvalue 0.01");
+  eq("extract: joins a short multi-line paste", extractCommandLine("--qvalue\n0.01").text, "--qvalue 0.01");
+  eq("extract: rejoins a hard-wrapped command line",
+    extractCommandLine("--qvalue 0.01 --matrices --verbose 2\n--cut K*,R* --var-mods 3 --unimod4").text,
+    "--qvalue 0.01 --matrices --verbose 2 --cut K*,R* --var-mods 3 --unimod4");
+  eq("extract: prose does not join across the command line",
+    extractCommandLine("DIA-NN 2.3\n--qvalue 0.01 --matrices --verbose 2\nThread number set to 8").text,
+    "--qvalue 0.01 --matrices --verbose 2");
+  /* the fixture above has no --flags in its prose, so on its own it proves
+     nothing about prose that does. These do. */
+  eq("extract: a note mentioning one flag is not absorbed (after)",
+    extractCommandLine("--qvalue 0.01 --matrices --verbose 2\nWarning: --reanalyse is not recommended here").text,
+    "--qvalue 0.01 --matrices --verbose 2");
+  eq("extract: a note mentioning one flag is not absorbed (before)",
+    extractCommandLine("Tip: use --peptidoforms for PTMs\n--qvalue 0.01 --matrices --verbose 2").text,
+    "--qvalue 0.01 --matrices --verbose 2");
+  eq("extract: a sentence mentioning a flag is not absorbed",
+    extractCommandLine("--qvalue 0.01 --matrices --unimod4\nI also tried --reanalyse but it was slow").text,
+    "--qvalue 0.01 --matrices --unimod4");
+  eq("extract: two command lines do not merge",
+    extractCommandLine("diann.exe --qvalue 0.01 --matrices --verbose 2 --unimod4\ndiann.exe --qvalue 0.05 --verbose 1").text,
+    "diann.exe --qvalue 0.01 --matrices --verbose 2 --unimod4");
+  ok("extract: the discarded second command line is reported",
+    extractCommandLine("diann.exe --qvalue 0.01 --matrices --verbose 2 --unimod4\ndiann.exe --qvalue 0.05 --verbose 1").ignored > 0);
+  eq("extract: a continuation starting with a flag is still joined",
+    extractCommandLine("--qvalue 0.01 --matrices --verbose 2\n--unimod4 something").text,
+    "--qvalue 0.01 --matrices --verbose 2 --unimod4 something");
+  eq("extract: reports flags it had to leave behind",
+    extractCommandLine("--qvalue 0.01 --matrices --verbose 2\nsome prose\n--cut K*,R* --unimod4").ignored, 2);
+  eq("extract: nothing ignored for a clean paste",
+    extractCommandLine("--qvalue 0.01 --matrices --verbose 2").ignored, 0);
+
+  /* trimParams */
+  var t1 = trimParams('diann.exe --f "D:\\d\\s1.d" --lib "" --threads 8 --out "C:\\out\\r.tsv" --qvalue 0.01 --matrices');
+  eq("trim: pipeline flags and paths gone", t1.params, "--qvalue 0.01 --matrices");
+  ok("trim: --f reported as removed", t1.removed.some(function (r) { return r.flag === "f"; }));
+  ok("trim: --threads reported as removed", t1.removed.some(function (r) { return r.flag === "threads"; }));
+  ok("trim: every removal carries a reason", t1.removed.every(function (r) { return !!r.why; }));
+  eq("trim: kept count", t1.kept.length, 2);
+
+  var t2 = trimParams("--var-mod UniMod:21,79.966331,STY --var-mods 3 --cut K*,R*");
+  eq("trim: multi-value flags survive intact", t2.params, "--var-mod UniMod:21,79.966331,STY --var-mods 3 --cut K*,R*");
+
+  var t3 = trimParams("--qvalue 0.01 --qvalue 0.01 --matrices");
+  eq("trim: exact duplicates collapse", t3.params, "--qvalue 0.01 --matrices");
+
+  var t4 = trimParams("--gen-spec-lib --predictor --fasta-search --use-quant --quant-ori-names --qvalue 0.01");
+  eq("trim: library-building flags removed", t4.params, "--qvalue 0.01");
+
+  /* the four steps are themselves the reanalysis */
+  eq("trim: --reanalyse removed", trimParams("--reanalyse --qvalue 0.01").params, "--qvalue 0.01");
+  eq("trim: American spelling removed too", trimParams("--reanalyze --qvalue 0.01").params, "--qvalue 0.01");
+  ok("trim: --reanalyse removal is explained",
+     trimParams("--reanalyse --qvalue 0.01").removed.some(function (r) { return r.flag === "reanalyse"; }));
+
+  /* a run uses exactly one FASTA and one library */
+  var tf = trimParams('--fasta "/a/one.fasta" --fasta "/a/two.fasta" --qvalue 0.01');
+  ok("trim: several FASTA files raise a warning",
+     tf.warnings.some(function (w) { return /2 FASTA files/.test(w); }));
+  ok("trim: a single FASTA raises no warning",
+     trimParams('--fasta "/a/one.fasta" --qvalue 0.01').warnings.length === 0);
+  var tl = trimParams('--lib "/a/one.speclib" --lib "/a/two.speclib" --qvalue 0.01');
+  ok("trim: several libraries raise a warning",
+     tl.warnings.some(function (w) { return /2 spectral libraries/.test(w); }));
+  ok("trim: DIA-NN's empty --lib \"\" is not counted as a library",
+     trimParams('--lib "" --qvalue 0.01').warnings.length === 0);
+
+  var t5 = trimParams("");
+  eq("trim: empty input gives empty params", t5.params, "");
+  eq("trim: empty input warns nothing", t5.warnings.length, 0);
+
+  var t6 = trimParams("no flags here at all");
+  ok("trim: prose input warns", t6.warnings.length === 1);
+
+  var t7 = trimParams('--f "C:\\x\\y.d" --lib "" --threads 8');
+  ok("trim: nothing-left case warns", t7.warnings.some(function (w) { return /Nothing was left/.test(w); }));
+
+  var t8 = trimParams("--unknown-future-flag 7 --qvalue 0.01");
+  ok("trim: unknown flags are kept (blocklist, not allowlist)", /--unknown-future-flag 7/.test(t8.params));
+
+  /* a wrapped paste must keep everything, not just the first block */
+  var tw = trimParams(
+    'diann.exe --f "D:\\d\\s1.d" --lib "" --threads 8 --out "D:\\o\\r.tsv" --qvalue 0.01\n' +
+    "--matrices --met-excision --cut K*,R* --missed-cleavages 1 --unimod4\n" +
+    "--var-mod UniMod:21,79.966331,STY --var-mods 3 --mass-acc 15");
+  ok("trim: wrapped command line keeps every setting", tw.kept.length === 9, "kept " + tw.kept.length);
+  ok("trim: wrapped command line keeps the variable modification",
+     /--var-mod UniMod:21,79\.966331,STY/.test(tw.params));
+
+  /* values the shell would mangle must be dropped, not silently corrupted:
+     DIANN_PARAMS is expanded unquoted by 1.sh-4.sh */
+  var tq = trimParams('--qvalue 0.01 --my-note "hello world" --matrices');
+  eq("trim: a value with a space is dropped, not quoted", tq.params, "--qvalue 0.01 --matrices");
+  ok("trim: dropped-value flag is explained", tq.removed.some(function (r) { return r.flag === "my-note"; }));
+  ok("trim: no stray quote reaches the params", tq.params.indexOf('"') === -1);
+
+  var tempty = trimParams('--qvalue 0.01 --mod "" --matrices');
+  eq("trim: an empty value is dropped rather than vanishing", tempty.params, "--qvalue 0.01 --matrices");
+
+  var tinj = trimParams("--qvalue 0.01 --x$(touch /tmp/PWNED) 1 --matrices");
+  ok("trim: a command substitution in a flag name is dropped", tinj.params.indexOf("$(") === -1);
+  var tinj2 = trimParams("--qvalue 0.01 --note `id` --matrices");
+  ok("trim: a backtick value is dropped", tinj2.params.indexOf("`") === -1);
+  var tinj3 = trimParams("--qvalue 0.01 --note $HOME --matrices");
+  ok("trim: a dollar value is dropped", tinj3.params.indexOf("$") === -1);
+
+  eq("trim: a bare -- is discarded", trimParams("--matrices -- --qvalue 0.01").params,
+     "--matrices --qvalue 0.01");
+  eq("trim: prose after a flag is dropped with the flag",
+     trimParams("--qvalue 0.01 --matrices --verbose 2 (I set this myself)").params,
+     "--qvalue 0.01 --matrices");
+
+  /* --cut K*,R*,!*P is plain Trypsin (not before proline): the single most
+     common enzyme setting there is. It must survive. */
+  eq("trim: Trypsin cleavage spec with an exclusion survives",
+     trimParams("--cut K*,R*,!*P --qvalue 0.01").params, "--cut K*,R*,!*P --qvalue 0.01");
+  eq("trim: quoted Trypsin spec survives",
+     trimParams('--cut "K*,R*,!*P" --qvalue 0.01').params, "--cut K*,R*,!*P --qvalue 0.01");
+  eq("trim: multi-exclusion cleavage spec survives",
+     trimParams("--cut K*,R*,!*P,!*K --qvalue 0.01").params, "--cut K*,R*,!*P,!*K --qvalue 0.01");
+  ok("trim: Trypsin spec is not reported as removed",
+     trimParams("--cut K*,R*,!*P --qvalue 0.01").removed.length === 0);
+
+  /* mod specs must not be mistaken for Windows drive letters */
+  ok("trim: a C:nn mod spec is not treated as a Windows path",
+     /--fixed-mod C:57\.021464/.test(trimParams("--fixed-mod C:57.021464 --qvalue 0.01").params));
+
+  var t9 = trimParams(PRESETS["Phospho, human (TIPS)"]);
+  eq("trim: production preset survives untouched", t9.params, PRESETS["Phospho, human (TIPS)"].replace(/\s+/g, " "));
+  eq("trim: production preset drops nothing", t9.removed.length, 0);
+
+  /* paths */
+  eq("path: windows path rejected", checkPath("C:\\data\\raw", "dir").level, "err");
+  eq("path: backslash path rejected", checkPath("\\\\server\\share", "dir").level, "err");
+  eq("path: relative path rejected", checkPath("data/raw", "dir").level, "err");
+  eq("path: empty required field errors", checkPath("", "dir").level, "err");
+  ok("path: empty extra folder is not an error", checkPath("", "dir-extra") === null);
+  eq("path: a .d file is rejected as a folder", checkPath("/scratch/p/x/sample.d", "dir").level, "err");
+  eq("path: good scratch folder passes", checkPath("/scratch/project_2000752/x/raw_file", "dir").level, "ok");
+  eq("path: odd library extension warns", checkPath("/scratch/p/lib.txt", "lib").level, "warn");
+  eq("path: speclib passes", checkPath("/scratch/p/a.speclib", "lib").level, "ok");
+  eq("path: fasta passes", checkPath("/scratch/p/a.fasta", "fasta").level, "ok");
+  eq("path: non-sif container rejected", checkPath("/scratch/p/diann.img", "sif").level, "err");
+  eq("path: unversioned sif warns", checkPath("/scratch/p/container.sif", "sif").level, "warn");
+  eq("path: space in path warns", checkPath("/scratch/my data/raw", "dir").level, "warn");
+  eq("path: home path warns but is allowed", checkPath("/home/x/raw", "dir").level, "warn");
+
+  /* shell metacharacters must be errors, never "Looks right" */
+  eq("path: command substitution rejected", checkPath("/scratch/project_2000752/x/$(id)/raw", "dir").level, "err");
+  eq("path: variable expansion rejected", checkPath("/scratch/project_2000752/p/out$USER/o", "dir").level, "err");
+  eq("path: embedded double quote rejected", checkPath('/scratch/project_2000752/x/a"b/raw', "dir").level, "err");
+  eq("path: backtick rejected", checkPath("/scratch/project_2000752/x/`id`/raw", "dir").level, "err");
+  eq("path: trailing backslash rejected", checkPath("C:\\data\\raw\\", "dir").level, "err");
+
+  /* a soft warning must never hide a hard error */
+  eq("path: double slash does not hide a .d file", checkPath("/scratch/p//sample.d", "dir").level, "err");
+  eq("path: a space does not hide a bad container extension", checkPath("/scratch/my data/diann.img", "sif").level, "err");
+
+  /* chunk size: one parse for both the message and the emitted value */
+  eq("chunk: plain number accepted", parseChunk("350").value, 350);
+  eq("chunk: thousands separator rejected", parseChunk("1,000").level, "err");
+  eq("chunk: exponent notation rejected", parseChunk("1e3").level, "err");
+  eq("chunk: negative rejected", parseChunk("-5").level, "err");
+  eq("chunk: zero rejected", parseChunk("0").level, "err");
+  /* cluster caps differ, so a high value warns rather than blocking */
+  eq("chunk: over the usual queue limit warns", parseChunk("1000").level, "warn");
+  ok("chunk: a high value is still usable", parseChunk("1000").ok);
+  eq("chunk: text rejected", parseChunk("abc").level, "err");
+  eq("chunk: empty rejected", parseChunk("").level, "err");
+  ok("chunk: rejected values are never emitted", !parseChunk("1e3").ok);
+  /* the runner queues CHUNK_SIZE tasks plus a shim, against MaxSubmit=400 */
+  eq("chunk: 399 is the largest that fits", parseChunk("399").value, 399);
+  eq("chunk: 400 would overflow the usual queue by one", parseChunk("400").level, "warn");
+  eq("chunk: surrounding spaces tolerated", parseChunk("  200  ").value, 200);
+
+  /* the Step 1 check is copied before anything else, so it must be safe alone */
+  ok("verify: an injectable path is never emitted",
+     buildVerifyCommand({ dirs: ["/scratch/p/$(touch /tmp/PWNED)/raw"], libfile: "", fastafile: "", sif: "" })
+       .indexOf("$(") === -1);
+  ok("verify: an injectable path is explained instead",
+     /red/.test(buildVerifyCommand({ dirs: ['/scratch/p/`id`/raw'], libfile: "", fastafile: "", sif: "" })));
+  ok("verify: a quote in a path is never emitted",
+     buildVerifyCommand({ dirs: ['/scratch/p/a"b/raw'], libfile: "", fastafile: "", sif: "" }).indexOf('a"b') === -1);
+
+  /* names and suggestions */
+  eq("name: spaces become underscores", safeName("my run 1"), "my_run_1");
+  eq("name: empty falls back", safeName("   "), "my_experiment");
+  eq("name: strips leading and trailing junk", safeName("!!run!!"), "run");
+  eq("suggest: output sits beside the raw folder, named after the run",
+     suggestOutput("/scratch/p/Hanna/Vitreous_Fluid/MS_RERUN_RAW_PLT2-PLT3", "vitreous"),
+     "/scratch/p/Hanna/Vitreous_Fluid/vitreous_output");
+  eq("suggest: trailing slash handled",
+     suggestOutput("/scratch/p/proj/raw_file/", "run1"), "/scratch/p/proj/run1_output");
+  eq("suggest: windows path gives nothing", suggestOutput("C:\\x", "run1"), "");
+  eq("suggest: run name is sanitised into the folder name",
+     suggestOutput("/scratch/p/proj/raw", "my run"), "/scratch/p/proj/my_run_output");
+  /* two experiments in one folder must never share an output folder */
+  ok("suggest: different runs get different output folders",
+     suggestOutput("/scratch/p/proj/raw", "a") !== suggestOutput("/scratch/p/proj/raw", "b"));
+
+  /* configs live beside the raw folders and the output */
+  eq("configs: folder sits in the experiment folder",
+     configHome({ dirs: ["/scratch/p/Hanna/Vitreous_Fluid/MS_RERUN_RAW_PLT2-PLT3"] }),
+     "/scratch/p/Hanna/Vitreous_Fluid/configs");
+  eq("configs: blank rows are skipped when finding the folder",
+     configHome({ dirs: ["", "  ", "/scratch/p/proj/raw"] }), "/scratch/p/proj/configs");
+  eq("configs: falls back to home when no usable raw folder is given",
+     configHome({ dirs: [""] }), CONFIG_HOME_FALLBACK);
+  eq("configs: config file is named after the run",
+     configPath({ project: "my run", dirs: ["/scratch/p/proj/raw"] }),
+     "/scratch/p/proj/configs/my_run_config.sh");
+
+  /* config generation */
+  var cfg = buildConfig({
+    project: "demo", dirs: ["/scratch/p/raw/"], outdir: "/scratch/p/out",
+    libfile: "/scratch/p/l.speclib", fastafile: "/scratch/p/f.fasta",
+    sif: "/scratch/p/diann-2.3.2.sif", chunk: "350", params: "--qvalue 0.01"
+  });
+  ok("config: bash shebang first", cfg.indexOf("#!/bin/bash") === 0);
+  ok("config: trailing slash stripped from data dir", cfg.indexOf('"/scratch/p/raw"') !== -1);
+  ok("config: version expansion emitted literally",
+     cfg.indexOf('DIANN_VERSION="${CONTAINER_SIF##*diann-}"') !== -1);
+  ok("config: binary path expansion emitted literally",
+     cfg.indexOf('DIANN_BIN_PATH="/diann-${DIANN_VERSION}/diann-linux"') !== -1);
+  ok("config: params written verbatim", cfg.indexOf('DIANN_PARAMS="--qvalue 0.01"') !== -1);
+  ok("config: default chunk size omitted", cfg.indexOf("CHUNK_SIZE") === -1);
+  ok("config: no carriage returns", cfg.indexOf("\r") === -1);
+
+  var cfg2 = buildConfig({
+    project: "demo", dirs: ["/a", "/b"], outdir: "/o", libfile: "/l.speclib",
+    fastafile: "/f.fasta", sif: "/diann-2.3.2.sif", chunk: "100", params: "--qvalue 0.01"
+  });
+  ok("config: both data folders present", cfg2.indexOf('"/a"') !== -1 && cfg2.indexOf('"/b"') !== -1);
+  ok("config: non-default chunk size written", cfg2.indexOf("CHUNK_SIZE=100") !== -1);
+
+  /* an unfilled "add another folder" row must not reach DATA_DIRS */
+  var cfg3 = buildConfig({
+    project: "demo", dirs: ["/a", "", "  "], outdir: "/o", libfile: "/l.speclib",
+    fastafile: "/f.fasta", sif: "/diann-2.3.2.sif", chunk: "350", params: "--qvalue 0.01"
+  });
+  ok("config: blank data folders are dropped", cfg3.indexOf('""') === -1);
+  eq("config: only the real folder remains", (cfg3.match(/^    "/gm) || []).length, 1);
+
+  /* a rejected chunk value must not be written at all */
+  var cfg4 = buildConfig({
+    project: "demo", dirs: ["/a"], outdir: "/o", libfile: "/l.speclib",
+    fastafile: "/f.fasta", sif: "/diann-2.3.2.sif", chunk: "1e3", params: "--qvalue 0.01"
+  });
+  ok("config: an invalid chunk size is omitted, not mangled", cfg4.indexOf("CHUNK_SIZE") === -1);
+
+  /* Writing the config. A terminal may run a pasted block one line at a time,
+     which destroys any multi-line construct, so every line must stand alone. */
+  function decode64(b64) { return decodeURIComponent(escape(atob(b64))); }
+  /* handles both shapes: the one-liner and the chunked fallback */
+  function payloadOf(cmd) {
+    var one = cmd.match(/^echo '([^']*)' \| base64 -d \| bash$/);
+    if (one) { return one[1]; }
+    var out = "";
+    cmd.split("\n").forEach(function (l) {
+      var m = l.match(/^printf '%s' '([^']*)'/);
+      if (m) { out += m[1]; }
+    });
+    return out;
+  }
+  function isStandalone(lines) {
+    return lines.every(function (l) {
+      if (l.trim() === "") { return false; }
+      if (l.charAt(l.length - 1) === "\\") { return false; }
+      return !/(^|\s)(for|while|do|done|then|fi|elif)(\s|$)/.test(l);
+    });
+  }
+
+  var wstate = { project: "my run", dirs: ["/scratch/p/proj/raw_file"] };
+  var hd = buildWriteCommand(wstate, cfg);
+  var hdLines = hd.split("\n");
+  ok("write: is a single pasted line", hdLines.length === 1);
+  ok("write: pipes the decoded script into bash", /\| base64 -d \| bash$/.test(hd));
+  ok("write: every line is a standalone command", isStandalone(hdLines));
+  ok("write: payload holds no single quote to end its own argument",
+     payloadOf(hd).indexOf("'") === -1);
+
+  /* what the decoded script actually does */
+  var ws = decode64(payloadOf(hd));
+  ok("write script: creates the config folder first", ws.indexOf("mkdir -p") === 0);
+  ok("write script: config name sanitised", ws.indexOf("my_run_config.sh") !== -1);
+  ok("write script: writes into the experiment configs folder",
+     ws.indexOf("mkdir -p /scratch/p/proj/configs") === 0);
+  ok("write script: keeps a backup of an existing config", ws.indexOf(".bak") !== -1);
+  ok("write script: here-document delimiter is quoted so ${...} is literal",
+     ws.indexOf("<< 'DIANNEOF'") !== -1);
+  ok("write script: contains the config verbatim", ws.indexOf(cfg) !== -1);
+  ok("write script: closes the here-document on its own line",
+     ws.indexOf(cfg + "DIANNEOF\n") !== -1);
+  ok("write script: the config has no line that is only the delimiter",
+     cfg.split("\n").every(function (l) { return l !== "DIANNEOF"; }));
+  ok("write script: reports where the config went", /Config written to/.test(ws));
+  ok("write script: shows the run command next", ws.indexOf(RUNNER) !== -1);
+  ok("write script: adds the trailing newline when the config lacks one",
+     decode64(payloadOf(buildWriteCommand({ project: "x", dirs: ["/a/b"] }, "A=1"))).indexOf("A=1\nDIANNEOF") !== -1);
+
+  /* shell metacharacters cannot survive encoding, so nothing can be re-read */
+  var nasty = buildWriteCommand({ project: "x", dirs: ["/a/b"] }, 'OUT="/scratch/$(id)/`whoami`"\n');
+  ok("write: metacharacters never appear literally in the command",
+     nasty.indexOf("$(id)") === -1 && nasty.indexOf("`whoami`") === -1);
+  ok("write: a metacharacter config still round-trips",
+     decode64(payloadOf(nasty)).indexOf('OUT="/scratch/$(id)/`whoami`"') !== -1);
+
+  /* an oversized config must fall back to chunked lines rather than risk the
+     terminal truncating one enormous line */
+  var bigDirs = [], bi;
+  for (bi = 0; bi < 60; bi++) { bigDirs.push("/scratch/project/DIA-NN/04_projects/user/batch_" + bi + "/raw_file"); }
+  var bigCfg = buildConfig({
+    project: "big", dirs: bigDirs, outdir: "/o", libfile: "/l.speclib",
+    fastafile: "/f.fasta", sif: "/diann-2.3.2.sif", chunk: "350", params: "--qvalue 0.01"
+  });
+  var bigCmd = buildWriteCommand({ project: "big", dirs: bigDirs }, bigCfg);
+  var bigLines = bigCmd.split("\n");
+  ok("write: an oversized config falls back to chunked lines", bigLines.length > 1);
+  ok("write: the fallback still pipes into bash", /\| bash/.test(bigCmd));
+  ok("write: no fallback line exceeds the chunk size plus its command",
+     bigLines.every(function (l) { return l.length <= B64_CHUNK + 200; }));
+  ok("write: every fallback line is standalone", isStandalone(bigLines));
+  /* the staging file cannot live in the folder the script has yet to create */
+  ok("write: the fallback stages its payload somewhere that already exists",
+     bigCmd.indexOf("$HOME/.diann_config.b64") !== -1);
+  ok("write: the fallback does not stage inside the configs folder",
+     bigCmd.indexOf("/configs/") === -1 || bigCmd.indexOf("printf '%s' '") !== bigCmd.lastIndexOf("/configs/"));
+  ok("write: the fallback payload still decodes to the same script",
+     decode64(payloadOf(bigCmd)).indexOf(bigCfg) !== -1);
+
+  /* run command: one line, the runner by full path, config as its argument */
+  var rc = buildRunCommand(wstate);
+  ok("run: is a single line", rc.split("\n").length === 1);
+  ok("run: calls the runner by its full path", rc.indexOf(RUNNER + " ") === 0);
+  ok("run: needs no cd", rc.indexOf("cd ") === -1);
+  ok("run: points at the generated config", rc.indexOf("my_run_config.sh") !== -1);
+  ok("run: passes exactly one argument", rc.split(" ").length === 2);
+  ok("run: is a standalone command", isStandalone(rc.split("\n")));
+  ok("run: the runner path is absolute", RUNNER.charAt(0) === "/");
+  ok("run: the runner is diann_runner.sh", /\/diann_runner\.sh$/.test(RUNNER));
+
+  /* verify command */
+  var vstate = { dirs: ["/scratch/p/raw"], libfile: "/l.speclib", fastafile: "/f.fasta", sif: "/s.sif" };
+  var vc = buildVerifyCommand(vstate);
+  ok("verify: is a single pasted line", vc.split("\n").length === 1);
+  ok("verify: pipes the decoded script into bash", /\| base64 -d \| bash$/.test(vc));
+  ok("verify: empty input is handled", buildVerifyCommand({ dirs: [""], libfile: "", fastafile: "", sif: "" }).indexOf("#") === 0);
+
+  var vs = decode64(payloadOf(vc));
+  ok("check script: tests every path", vs.indexOf('"/scratch/p/raw"') !== -1 && vs.indexOf('"/l.speclib"') !== -1);
+  ok("check script: counts raw files", vs.indexOf("wc -l") !== -1);
+  ok("check script: labels each path", /raw folder/.test(vs) && /library/.test(vs) && /FASTA/.test(vs));
+  ok("check script: says found or MISSING", /found/.test(vs) && /MISSING/.test(vs));
+  ok("check script: prints a closing summary", /not found/.test(vs) && /All paths are there/.test(vs));
+  ok("check script: numbers the folders when there are several",
+     /raw folder 2/.test(decode64(payloadOf(buildVerifyCommand(
+       { dirs: ["/a", "/b"], libfile: "", fastafile: "", sif: "" })))));
+  ok("check script: counts raw files for every folder",
+     (decode64(payloadOf(buildVerifyCommand(
+       { dirs: ["/a", "/b"], libfile: "", fastafile: "", sif: "" }))).match(/wc -l/g) || []).length === 2);
+
+  el("tests").classList.add("on");
+  el("test-out").innerHTML =
+    (fail === 0
+      ? '<span class="t-pass">' + pass + " passed, 0 failed.</span>\n\n"
+      : '<span class="t-fail">' + fail + " FAILED</span>, " + pass + " passed.\n\n") +
+    out.join("\n");
+  el("tests").scrollIntoView();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+</script>

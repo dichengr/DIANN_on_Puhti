@@ -1,6 +1,6 @@
 # DIA-NN Config Builder
 
-**Live: <https://dddcr.github.io/DIANN_on_Puhti/webgui/>**
+**Live: <https://dichengr.github.io/DIANN_on_Puhti/>**
 
 A single web page that writes a `config.sh` for the group's DIA-NN pipeline, so a
 biologist can start a run without editing any file on the cluster.

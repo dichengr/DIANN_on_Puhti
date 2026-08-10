@@ -6,12 +6,26 @@ The idea is based on Brett S. Phinney's Youtube video [Running DIA-NN on an HPC 
 
 -----
 
+## Start here: the config builder
+
+**[→ Open the DIA-NN Config Builder](https://dddcr.github.io/DIANN_on_Puhti/webgui/)**
+
+A web page that writes your configuration file for you. Fill in four paths, paste the
+settings from your own DIA-NN, and it gives you two lines to copy into a terminal — one
+that writes the config, one that starts the run. No file editing, no Linux knowledge
+needed. It never contacts the cluster; it only produces text for you to paste.
+
+If you would rather write the config by hand, everything it does is described in
+[Setting up a run](#step-2-create-your-config-file) below.
+
+-----
+
 ## Overview
 
 This system automates the 4-step DIA-NN workflow to maximize speed and ensure consistent results. You don't need to edit the core scripts or submit jobs manually. You only need to:
 
 1.  Organize your data.
-2.  Fill out a simple configuration file.
+2.  Create a configuration file.
 3.  Run a single submission command.
 
 -----
@@ -36,6 +50,20 @@ Step 4: Generate Final Report
 
 The refined results from the second search are combined to generate the final quantification tables for your analysis.
 
+**Large projects are split automatically.** Puhti allows 400 queued jobs per account, so
+runs with more raw files than that are submitted in batches, each waiting for the last to
+finish. You do not have to do anything differently.
+
+-----
+
+## What is in this repository
+
+| | |
+| :--- | :--- |
+| `src/` | The master scripts. These live on Puhti at `/scratch/project_2000752/DIA-NN/02_scripts/` and you do not edit them. |
+| `webgui/` | The config builder page. Served at the link above. |
+| `example_config.sh` | A configuration file to copy and edit, if you are not using the builder. |
+
 -----
 
 ### Folder Structure
@@ -44,69 +72,51 @@ The entire system is organized to keep shared files separate from your individua
 
 ```
 DIA-NN/
-├── 01_containers/         (Contains the DIA-NN .sif file)
+├── 01_containers/         (Contains the DIA-NN .sif files)
 ├── 02_scripts/            (Contains the master scripts)
-├── 03_resources/          (Contains shared lib files, etc.)
-│    └── lib/
-│         └── .speclib/
-└── 04_projects/              (This is where you'll create your project folders)
+├── 03_resources/          (Contains shared lib and fasta files)
+│    ├── lib/
+│    └── fasta/
+└── 04_projects/           (This is where you'll create your project folders)
      └── userA/
-           └── projectX/
-                ├── raw_data/
+           └── projectX/            <- the experiment folder
+                ├── raw_data/       <- your .d or .raw files
                 │   ├── sample1.d
                 │   └── sample2.d
-                ├── config.sh
-                ├── .fasta
-                └── output/
+                ├── configs/        <- config files (the builder puts them here)
+                └── myrun_output/
                         ├── logs/
                         ├── step1_quant/
                         ├── step2_lib/
                         ├── step3_quant/
-                        └── step4_report/
+                        └── step4_report/   <- your final report
 ```
+
+Keeping the raw folder, the configs folder and the output folder side by side in one
+experiment folder means everything for a run stays together. The builder follows this
+layout automatically.
+
 -----
 
 ## How to Run a New Project
 
-Follow these four steps for each new analysis you want to run.
-
 ### Step 1: Set Up Your Project Folder
 
-First, log into [puhti.csc.fi](https://www.puhti.csc.fi/public/), The main workflow is in /scratch/project_2000752/DIA-NN. Create a new directory for your project inside the `04_projects` folder. It's best practice to also create your own directory with your name and current project. Also create `raw_data`, and `output` subdirectories would be great.
+First, log into [puhti.csc.fi](https://www.puhti.csc.fi/public/). The main workflow is in `/scratch/project_2000752/DIA-NN`. Create a directory for your project inside `04_projects`, under your own username folder.
 
 ```bash
 # Example for a new project called 'mouse_brain'
-cd /scratch/project_2000752/DIA-NN/04_projects/userx/projectx
-mkdir -p mouse_brain/config mouse_brain/raw_data mouse_brain/output
+cd /scratch/project_2000752/DIA-NN/04_projects/userx
+mkdir -p mouse_brain/raw_data
 ```
 
-### Step 2: Prepare Your Data
+Then put your files in place:
 
-Before running the workflow, you need to make sure your input files are in the correct locations on Puhti.
+- **Raw data (`.d` / `.raw`)** → your project's `raw_data/` folder.
+- **FASTA (`.fasta`)** → your project folder, or `03_resources/fasta/` if others will reuse it.
+- **Spectral library (`.speclib`)** → check `03_resources/lib/` first; if a suitable one for your proteome is already there, use it. Otherwise upload yours there.
 
-- Raw Data (.d files)
-
-Place all the raw mass spectrometry data files for your analysis into your project's 'raw_data' directory.
-     
-Destination: 04_projects/your_project_name/raw_data/
-
-- FASTA Files (.fasta)
-
-Place FASTA file for your analysis into your project's directory.
-     
-Recommended Destination: 04_projects/your_project_name/
-
-- Spectral Libraries (.speclib)
-
-For commonly used proteomes (like human or mouse), first check if a suitable spectral libraries in the shared libraries folder. If not, upload yours there.
-     
-Destination: 03_resources/lib/
-
-**The Puhti web interface has a 10 GB upload limit. For larger files, like a big spectral library, you should use Allas.csc.fi, CSC's object storage service.**
-
-1. First, upload your large file to Allas from your local computer.
-
-2. Then, on Puhti, use the following commands to download it to the cluster:
+**The Puhti web interface has a 10 GB upload limit.** For larger files, like a big spectral library, use [Allas](https://allas.csc.fi), CSC's object storage:
 
 ```bash
 module load allas
@@ -114,57 +124,63 @@ allas-conf
 a-get your_object_name  # downloads into current dir
 ```
 
+### Step 2: Create Your Config File
 
-### Step 3: Create and Edit Your `config.sh` File
+This tells the workflow where your files are and what DIA-NN settings to use.
 
-This is the most **important** step. It tells the workflow where your files are and what DIA-NN settings to use.
+**The easy way** — open the **[Config Builder](https://dddcr.github.io/DIANN_on_Puhti/webgui/)**, fill in the form, and paste the line it gives you into a Puhti terminal. It checks your paths, counts your raw files, and writes the config into your project's `configs/` folder.
 
-1.  Copy the configuration template into your project's `config` folder.
+**By hand** — copy `example_config.sh` into your project and edit it. These are the variables:
 
-    ```bash
-    cp /scratch/project_2000752/DIA-NN/04_projects/dichengr/test/example_config.sh /scratch/project_2000752/DIA-NN/projects/your/project/
-    ```
+| Variable | What it is |
+| :--- | :--- |
+| `DATA_DIRS` | A bash **array** of folders holding your raw files. Add more entries to analyse several batches together. |
+| `OUTPUT_DIR` | Where all results are created. Made for you if it does not exist. |
+| `LIB_FILE` | The spectral library for the first search. |
+| `FASTA_FILE` | Your protein database. One FASTA per run. |
+| `CONTAINER_SIF` | The DIA-NN version to use. The version is read from the filename, so it must look like `diann-2.6.1.sif`. |
+| `DIANN_PARAMS` | One line of DIA-NN search flags (see the reference below). |
+| `CHUNK_SIZE` | *Optional.* How many jobs to queue at once, default 350. Leave it alone unless told otherwise. |
 
-2.  Open your new `config.sh` file and edit the paths and parameters(Pay close attention to the variables marked with "CHANGE THIS").
-
-      * `DATA_DIR`: Full path to your project's `raw_data` folder.
-      * `OUTPUT_DIR`: Full path to your project's `output` folder.
-      * `LIB_FILE`: Full path to the main spectral library you want to use.
-      * `FASTA_FILE`: Full path to the FASTA file for your search.
-      * `DIANN_PARAMS`: A single line containing all the command-line flags for your DIA-NN search (check Parameter Reference).
-
-    **Note: Cluster resource settings (CPUs, memory, time) are pre-set in the master script for consistency.**
-
-### Step 4: Submit the Workflow
-
-You're now ready to launch the entire workflow. Run the master submission script from any location on Puhti, providing the full path to **your project's config file**.
+`DATA_DIRS` is an array, so it is written like this — note the brackets:
 
 ```bash
-# The path to the master script will not change.
-# The only thing that changes for each project is the path to its config file.
+DATA_DIRS=(
+    "/scratch/project_2000752/DIA-NN/04_projects/userx/mouse_brain/raw_data"
+)
+```
 
-/scratch/project_2000752/DIA-NN/02_scripts/diann_runner.sh /scratch/project_2000752/DIA-NN/04_projects/userx/projects/config.sh
+**Note: Cluster resource settings (CPUs, memory, time) are pre-set in the master scripts for consistency.**
+
+### Step 3: Submit the Workflow
+
+One line, from anywhere on Puhti. The path to the master script never changes; only your config path does.
+
+```bash
+/scratch/project_2000752/DIA-NN/02_scripts/diann_runner.sh /scratch/project_2000752/DIA-NN/04_projects/userx/mouse_brain/configs/mouse_brain_config.sh
 ```
 
 ## What Happens Next?
 
-After you run the command, the script will print the Job IDs for each of the four steps. The entire workflow will now run automatically.
+The script prints Job IDs and the whole workflow then runs on its own — steps 2, 3 and 4 are submitted automatically as each one finishes. You do not run them yourself.
 
-  * **To monitor your jobs:** Use the `squeue --me` command or check on puhti website -> active jobs.
-  * **To check your results:** Once the final job is complete, your final report files will be located in your project's `output/report/` directory.
-  * **To check for errors:** All log files from the run are saved in `output/logs/`.
+  * **To monitor your jobs:** `squeue --me`, or the Puhti website → active jobs.
+  * **To check your results:** the final report lands in `<output>/step4_report/` as `final_report_*.tsv`, together with the protein and peptide matrices.
+  * **To check for errors:** every job writes a log into `<output>/logs/`. If something fails, that folder says exactly what.
 
 -----
 
 ## DIA-NN Parameter Reference
 
-You can control the analysis by adding or changing flags in the `DIANN_SEARCH_PARAMS` variable in your `config.sh` file.
+You control the analysis through the `DIANN_PARAMS` variable in your config file.
 
-The full, official list of all command-line flags is available on the **[DIA-NN GitHub Page](https://github.com/vdemichev/DiaNN?tab=readme-ov-file#command-line-reference)**.
+The full, official list of all command-line flags is on the **[DIA-NN GitHub Page](https://github.com/vdemichev/DiaNN?tab=readme-ov-file#command-line-reference)**.
+
+Do **not** put file paths, `--threads`, `--lib`, `--fasta`, `--out` or `--reanalyse` in
+`DIANN_PARAMS`. The workflow supplies those itself, and the four steps already are a
+reanalysis. The config builder strips them for you and tells you why.
 
 ### Common Parameters
-
-Here are some of the most common flags you might use:
 
 | Parameter | Example Value | What It Does |
 | :--- | :--- | :--- |
@@ -176,8 +192,8 @@ Here are some of the most common flags you might use:
 | `--min-pep-len` | `8` | Sets the minimum length for a peptide to be considered. |
 | `--fixed-mod` | `UniMod:4,57.021464,C` | Sets a fixed modification. The example is for carbamidomethylation on Cysteine. |
 | `--var-mod` | `UniMod:35,15.994915,M` | Sets a variable modification. The example is for Oxidation on Methionine. The format is `UniMod:ID,MassShift,AminoAcids`. |
-| `--cut` | `K*,R*` | Defines the enzyme cleavage rule. The example is for Trypsin, which cuts after Lysine (K) and Arginine (R). |
+| `--cut` | `K*,R*,!*P` | Defines the enzyme cleavage rule. This example is Trypsin: cut after Lysine (K) and Arginine (R), but **not** before Proline (`!*P`). Use `K*,R*` for Trypsin/P, which cuts before Proline too. |
+
 -----
 
 **If confused and want to add more customized parameters, AI(ChatGPT, Gemini) is very helpful, but remember double check the parameter is really exist on DIAN-NN Github page**
-

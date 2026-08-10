@@ -1,5 +1,7 @@
 # DIA-NN Config Builder
 
+**Live: <https://dddcr.github.io/DIANN_on_Puhti/webgui/>**
+
 A single web page that writes a `config.sh` for the group's DIA-NN pipeline, so a
 biologist can start a run without editing any file on the cluster.
 
@@ -33,7 +35,7 @@ That contract is:
 | `CHUNK_SIZE` | written **only** when it differs from the default 350 |
 
 Constants live at the top of the `<script>` block in `index.html`:
-`RUNNER`, `CONFIG_HOME`, `DEFAULT_CHUNK`, `B64_CHUNK`.
+`RUNNER`, `CONFIG_HOME_FALLBACK`, `DEFAULT_CHUNK`, `B64_CHUNK`, `MAX_ONE_LINE`.
 
 `RUNNER` is the one fixed path — the shared `diann_runner.sh`. It is called by full
 path, so there is no `cd`, the whole submission is a single line, and the user never
@@ -44,8 +46,8 @@ script folder internally, so calling it from anywhere works.
 the user fills in each time; the placeholder shows the shape only. Don't turn it back
 into a default that quietly goes stale.
 
-**If `config.sh` gains a field,** update `buildConfig()` and add a golden file under
-`tests/golden/`.
+**If `config.sh` gains a field,** update `buildConfig()` — and add a golden config to
+the test suite (see [Tests](#tests)).
 
 ## Why paste rather than download, and why base64
 
@@ -78,8 +80,8 @@ Above `MAX_ONE_LINE` the payload is split across independent `printf … >> file
 and piped to bash afterwards, in case a terminal's input buffer truncates one enormous
 line. Both shapes are tested, including execution one line at a time.
 
-`tests/run_all.sh` runs the emitted commands for real (against a scratch `CONFIG_HOME`,
-never `$HOME`) and checks the output. Keep those tests.
+The test suite runs the emitted commands for real — against a scratch config folder,
+never `$HOME` — and checks their output, including executing them one line at a time.
 
 ## Where things are placed
 
@@ -143,11 +145,10 @@ it goes through the same trimmer as a pasted log, so it cannot smuggle in a path
 
 ## Tests
 
-```bash
-bash webgui/tests/run_all.sh
-```
-
-Three layers:
+A three-layer suite (about 180 checks) covers this page. **It is not kept in this
+repository** — it lives in the maintainer's working copy, because the repo is meant to
+stay a small, readable drop for the group. Ask before changing `index.html` if you want
+to run it. The layers are:
 
 - **Page logic** (`run_js_tests.js`) — pulls the `<script>` block out of `index.html`
   and runs the page's own suite against DOM stubs, so the tests exercise the code the
@@ -162,12 +163,17 @@ Three layers:
   a mock run of the runner's own file discovery over paths with spaces, the Trypsin
   cleavage spec surviving word splitting, and parity with the production `config.sh`.
 
-`run_all.sh` needs a JS runtime for the first two layers. If `node` is not installed
-it falls back to any Electron app on the machine via `ELECTRON_RUN_AS_NODE=1`. With
-neither, open `index.html?test=1` in a browser — same suite, rendered on the page.
+The first two layers need a JS runtime; the third is plain bash. **With no runtime at
+all, open `index.html?test=1` in a browser** — that runs the page's own logic suite and
+prints the results on the page, and it works from the live link above. That is the one
+check anybody can do without setting anything up.
 
 ## Publishing
 
-The page is plain HTML with everything inlined; host it anywhere, or hand out the
-artifact link. Keep `index.html` as the single source — there is no build step, and
-the tests read that file directly.
+The page is served by GitHub Pages from this folder, so **pushing a change to `main`
+redeploys it** within about a minute — there is no build step. Everything is inlined in
+`index.html`, so it also works by double-clicking the file, or from a USB stick, with no
+network at all.
+
+Keep `index.html` as the single source: the tests read that file directly, and a second
+copy would drift.

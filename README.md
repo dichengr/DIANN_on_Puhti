@@ -5,7 +5,7 @@ You organise your data, make a config file, and submit one command — the rest 
 
 Based on Brett S. Phinney's video [Running DIA-NN on an HPC cluster](https://youtu.be/75Gk6uQclc8?si=zZqzikGoCqnogNtn).
 
-**[→ Open the DIA-NN Config Builder](https://dichengr.github.io/DIANN_on_Puhti/)** — a web page
+**[→ Open the DIA-NN Config Builder](https://dichengr.github.io/DIANN_on_Puhti/webgui/)** — a web page
 that writes the config file for you. No file editing, no Linux needed.
 
 -----
@@ -45,7 +45,7 @@ mkdir -p <your_project>/raw_data
 
 ### 2. Make the config file
 
-**Use the [Config Builder](https://dichengr.github.io/DIANN_on_Puhti/)** — fill in the
+**Use the [Config Builder](https://dichengr.github.io/DIANN_on_Puhti/webgui/)** — fill in the
 form, paste the line it gives you into terminal. It checks your paths, counts your
 raw files, and writes the config into `<your_project>/configs/`.
 

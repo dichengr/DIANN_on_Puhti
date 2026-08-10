@@ -10,13 +10,18 @@ source $1 # Load user config
 QUANT_DIR_STEP3=$2
 NEW_LIB_FILE=$3
 REPORT_DIR=$4
-REPORT_OUT="$REPORT_DIR/final_report"
+FILE_LIST=$5
+REPORT_OUT="$REPORT_DIR/final_report_$(date +%Y%m%d_%H%M%S)"
 
-FILES_STRING=$(find "$DATA_DIR" -maxdepth 1 \( -name '*.d' -o -name '*.raw' \) -printf '--f "%p" ')
+mapfile -t RAW_FILES < "$FILE_LIST"
+F_ARGS=()
+for r in "${RAW_FILES[@]}"; do
+    F_ARGS+=( --f "$r" )
+done
 
 module load apptainer
 apptainer exec -B /scratch:/scratch "$CONTAINER_SIF" "$DIANN_BIN_PATH" \
- $FILES_STRING \
+ "${F_ARGS[@]}" \
  --lib "$NEW_LIB_FILE" \
  --temp "$QUANT_DIR_STEP3" \
  --fasta "$FASTA_FILE" \

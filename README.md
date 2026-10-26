@@ -122,3 +122,12 @@ One that is easy to get wrong: `--cut K*,R*,!*P` is plain Trypsin (not before pr
 | `src/` | The master scripts, deployed at `02_scripts/` on Puhti. You do not edit these. |
 | `webgui/` | The Config Builder page. |
 | `example_config.sh` | Config template for editing by hand. |
+
+-----
+
+## License
+
+The scripts and Config Builder in this repository are released under the [MIT License](LICENSE).
+
+DIA-NN itself is not part of this repository and has its own license terms. Check the
+[DIA-NN repository](https://github.com/vdemichev/DiaNN) for what applies to your use.
